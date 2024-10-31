@@ -1,73 +1,135 @@
 import React, { useEffect, useState } from "react";
-import { db } from "../firebaseConfig";
-import { collection, getDocs, query, where } from "firebase/firestore";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
-import { Pie } from "react-chartjs-2";
+import { Chart as ChartJS, ArcElement, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from "chart.js";
+import { Pie, Doughnut, Bar } from "react-chartjs-2";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
-
-ChartJS.register(ArcElement, Tooltip, Legend);
+ChartJS.register(ArcElement, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
 
 const SalesAnalysis = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(new Date()); 
+  const [selectedDate, setSelectedDate] = useState(new Date());
+  const [selectedProductType, setSelectedProductType] = useState(null);
+  const [productTypes, setProductTypes] = useState([]);
+  const [chartType, setChartType] = useState("Pie");
+  const [salesData, setSalesData] = useState([]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true);
+    const loadJsonData = async () => {
       try {
-        const selectedYear = selectedDate.getFullYear();
-        const selectedMonth = selectedDate.getMonth() + 1;
-
-        const q = query(
-          collection(db, "date_csv"),
-          where("Year", "==", selectedYear),
-          where("Month", "==", selectedMonth)
-        );
-
-        const snapshot = await getDocs(q);
-        const salesData = {};
-
-        snapshot.forEach((doc) => {
-          const sale = doc.data();
-          const productType = sale["Product Type"];
-          const totalSale = sale["Total Sale"];
-
-          if (productType && totalSale) {
-            salesData[productType] = (salesData[productType] || 0) + totalSale;
-          }
-        });
-
-        const chartData = {
-          labels: Object.keys(salesData),
-          datasets: [
-            {
-              label: "Vânzări pe Tip de Produs",
-              data: Object.values(salesData),
-              backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#8A2BE2", "#FFA500"],
-            },
-          ],
-        };
-
-        setData(chartData);
-        setLoading(false);
+        const response = await fetch("/csvjson.json");
+        const jsonData = await response.json();
+        setSalesData(jsonData);
       } catch (error) {
-        console.error("Eroare la citirea datelor din Firestore:", error);
+        console.error("Error loading JSON data:", error);
       }
     };
 
-    fetchData();
-  }, [selectedDate]);
+    loadJsonData();
+  }, []);
+
+  const fetchDataByType = () => {
+    setLoading(true);
+    const selectedYear = selectedDate.getFullYear();
+    const selectedMonth = selectedDate.getMonth() + 1;
+
+    const filteredData = {};
+    const typesSet = new Set();
+
+    salesData.forEach((sale) => {
+      if (sale.Year === selectedYear && sale.Month === selectedMonth) {
+        const productType = sale["Product Type"];
+        const totalSale = sale["Total Sale"];
+
+        if (productType && totalSale) {
+          filteredData[productType] = (filteredData[productType] || 0) + totalSale;
+          typesSet.add(productType);
+        }
+      }
+    });
+
+    if (Object.keys(filteredData).length === 0) {
+      setData(null); // Setăm data la null dacă nu există date filtrate
+    } else {
+      const chartData = {
+        labels: Object.keys(filteredData),
+        datasets: [
+          {
+            label: "Sales by product type",
+            data: Object.values(filteredData),
+            backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#8A2BE2", "#FFA500", "#FF4500", "#32CD32", "#8B4513", "#FF69B4"],
+          },
+        ],
+      };
+
+      setData(chartData);
+    }
+
+    setProductTypes(Array.from(typesSet));
+    setLoading(false);
+  };
+
+  const fetchDataBySubtype = (productType) => {
+    setLoading(true);
+    const selectedYear = selectedDate.getFullYear();
+    const selectedMonth = selectedDate.getMonth() + 1;
+
+    const filteredData = {};
+
+    salesData.forEach((sale) => {
+      if (sale.Year === selectedYear && sale.Month === selectedMonth && sale["Product Type"] === productType) {
+        const productSubtype = sale["Product Subtype"];
+        const totalSale = sale["Total Sale"];
+
+        if (productSubtype && totalSale) {
+          filteredData[productSubtype] = (filteredData[productSubtype] || 0) + totalSale;
+        }
+      }
+    });
+
+    if (Object.keys(filteredData).length === 0) {
+      setData(null); // Setăm data la null dacă nu există date filtrate
+    } else {
+      const chartData = {
+        labels: Object.keys(filteredData),
+        datasets: [
+          {
+            label: `Sales by Subtype for ${productType}`,
+            data: Object.values(filteredData),
+            backgroundColor: ["#FF6384", "#36A2EB", "#FFCE56", "#8A2BE2", "#FFA500", "#FF4500", "#32CD32", "#8B4513", "#FF69B4"],
+          },
+        ],
+      };
+
+      setData(chartData);
+    }
+
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    if (salesData.length > 0) {
+      fetchDataByType();
+    }
+  }, [selectedDate, salesData]);
+
+  useEffect(() => {
+    if (salesData.length > 0) {
+      if (selectedProductType) {
+        fetchDataBySubtype(selectedProductType);
+      } else {
+        fetchDataByType();
+      }
+    }
+  }, [selectedProductType, salesData]);
 
   if (loading) return <p>Loading data...</p>;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", alignItems: "center" }}>
-      <h2>Analiza Vânzărilor pe Tip de Produs</h2>
+      <h2>Product sales analysis</h2>
       
-      {/* Selector de dată pentru lună și an */}
       <DatePicker
         selected={selectedDate}
         onChange={(date) => setSelectedDate(date)}
@@ -82,9 +144,56 @@ const SalesAnalysis = () => {
         }
       />
 
-      {/* Graficul */}
+      <select
+        value={selectedProductType || ""}
+        onChange={(e) => setSelectedProductType(e.target.value || null)}
+        style={{ marginTop: "10px", padding: "8px", borderRadius: "5px", border: "1px solid #ddd" }}
+      >
+        <option value="">Pick a product</option>
+        {productTypes.map((type) => (
+          <option key={type} value={type}>{type}</option>
+        ))}
+      </select>
+
+      <div style={{ marginTop: "20px" }}>
+        <label>
+          <input
+            type="radio"
+            value="Pie"
+            checked={chartType === "Pie"}
+            onChange={(e) => setChartType(e.target.value)}
+          /> Pie
+        </label>
+        <label style={{ marginLeft: "10px" }}>
+          <input
+            type="radio"
+            value="Doughnut"
+            checked={chartType === "Doughnut"}
+            onChange={(e) => setChartType(e.target.value)}
+          /> Doughnut
+        </label>
+        <label style={{ marginLeft: "10px" }}>
+          <input
+            type="radio"
+            value="Bar"
+            checked={chartType === "Bar"}
+            onChange={(e) => setChartType(e.target.value)}
+          /> Bar
+        </label>
+      </div>
+
       <div style={{ width: "400px", marginTop: "20px" }}>
-        {data ? <Pie data={data} /> : <p>Nu există date disponibile.</p>}
+        {data ? (
+          chartType === "Pie" ? (
+            <Pie data={data} />
+          ) : chartType === "Doughnut" ? (
+            <Doughnut data={data} />
+          ) : (
+            <Bar data={data} />
+          )
+        ) : (
+          <p>Data not available.</p>
+        )}
       </div>
     </div>
   );
