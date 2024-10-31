@@ -7,13 +7,12 @@ import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
 
 
-// Înregistrare elemente Chart.js
 ChartJS.register(ArcElement, Tooltip, Legend);
 
 const SalesAnalysis = () => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(new Date()); // Stochează data selectată
+  const [selectedDate, setSelectedDate] = useState(new Date()); 
 
   useEffect(() => {
     const fetchData = async () => {
