@@ -1,50 +1,77 @@
-import React, { useEffect, useState } from "react";
-import { SLR } from "ml-regression";
-import { Line } from "react-chartjs-2";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
+import { Line, Bar } from "react-chartjs-2";
 import {
     Chart as ChartJS,
     CategoryScale,
     LinearScale,
-    LineElement,
+    BarElement,
     PointElement,
     Tooltip,
     Legend
 } from "chart.js";
-import "./PriceElasticity.css"; // Importați fișierul CSS
+import "./PriceElasticity.css";
 
-ChartJS.register(CategoryScale, LinearScale, LineElement, PointElement, Tooltip, Legend);
+ChartJS.register(CategoryScale, LinearScale, BarElement, PointElement, Tooltip, Legend);
 
-const PriceElasticity = () => {
+const PriceInput = ({ priceChangePercent, onPriceChange }) => (
+    <div className="input-group">
+        <label>Price Change Percentage:</label>
+        <input
+            type="number"
+            value={priceChangePercent}
+            onChange={(e) => onPriceChange(parseFloat(e.target.value))}
+        />
+    </div>
+);
+
+const SeasonSelector = ({ selectedSeason, onSeasonChange }) => (
+    <div className="input-group">
+        <label>Select Season:</label>
+        <select value={selectedSeason} onChange={(e) => onSeasonChange(e.target.value)}>
+            <option value="Winter">Winter</option>
+            <option value="Spring">Spring</option>
+            <option value="Summer">Summer</option>
+            <option value="Autumn">Autumn</option>
+        </select>
+    </div>
+);
+
+const PriceImpact = () => {
     const [loading, setLoading] = useState(true);
     const [priceChangePercent, setPriceChangePercent] = useState(0);
     const [elasticityResults, setElasticityResults] = useState([]);
+    const [selectedSeason, setSelectedSeason] = useState("Winter");
 
-    const fetchData = async () => {
+    const fetchData = useCallback(async () => {
         setLoading(true);
         try {
             const response = await fetch(`${process.env.PUBLIC_URL}/csvjson.json`);
             const salesData = await response.json();
-
-            const groupedData = groupDataByProduct(salesData);
+            const groupedData = groupDataByProductAndSeason(salesData);
             const elasticity = calculateElasticity(groupedData);
             setElasticityResults(elasticity);
-            setLoading(false);
         } catch (error) {
             console.error("Error reading data from JSON:", error);
+        } finally {
             setLoading(false);
         }
-    };
+    }, []);
 
-    const groupDataByProduct = (data) => {
+    useEffect(() => {
+        fetchData();
+    }, [fetchData]);
+
+    const groupDataByProductAndSeason = (data) => {
         const grouped = {};
 
         data.forEach((sale) => {
-            const { "Product Type": productType, "Unit Price": unitPrice, "Total Sale": totalSale } = sale;
+            const { "Product Type": productType, "Season": season, "Unit Price": unitPrice, "Total Sale": totalSale } = sale;
+            const key = `${productType}-${season}`;
 
-            if (!grouped[productType]) grouped[productType] = { prices: [], sales: [] };
+            if (!grouped[key]) grouped[key] = { prices: [], sales: [] };
 
-            grouped[productType].prices.push(unitPrice);
-            grouped[productType].sales.push(totalSale);
+            grouped[key].prices.push(unitPrice);
+            grouped[key].sales.push(totalSale);
         });
 
         return grouped;
@@ -53,23 +80,31 @@ const PriceElasticity = () => {
     const calculateElasticity = (groupedData) => {
         const results = [];
 
-        Object.keys(groupedData).forEach((productType) => {
-            const { prices, sales } = groupedData[productType];
+        Object.keys(groupedData).forEach((key) => {
+            const { prices, sales } = groupedData[key];
+            const [productType, season] = key.split("-");
 
             if (prices.length > 1) {
-                const regression = new SLR(prices, sales);
-                const elasticity = regression.coefficients[1]; // β din regresie liniară
+                let elasticitySum = 0;
+                let count = 0;
 
-                const lastPrice = prices[prices.length - 1];
-                const predictedIncrease = regression.predict(lastPrice * (1 + priceChangePercent / 100));
-                const predictedDecrease = regression.predict(lastPrice * (1 - priceChangePercent / 100));
+                for (let i = 1; i < prices.length; i++) {
+                    const priceChange = (prices[i] - prices[i - 1]) / prices[i - 1];
+                    const salesChange = (sales[i] - sales[i - 1]) / sales[i - 1];
 
+                    if (priceChange !== 0) {
+                        const elasticity = salesChange / priceChange;
+                        elasticitySum += elasticity;
+                        count++;
+                    }
+                }
+
+                const averageElasticity = count > 0 ? elasticitySum / count : 0;
                 results.push({
                     productType,
-                    elasticity,
+                    season,
+                    elasticity: averageElasticity,
                     currentSales: sales[sales.length - 1],
-                    predictedIncrease,
-                    predictedDecrease,
                     prices,
                     sales
                 });
@@ -79,77 +114,94 @@ const PriceElasticity = () => {
         return results;
     };
 
-    useEffect(() => {
-        fetchData();
-    }, [priceChangePercent]);
+    const updatedElasticityResults = useMemo(() => {
+        return elasticityResults
+            .filter(result => result.season === selectedSeason)
+            .map(result => {
+                const { elasticity, currentSales } = result;
+                
+                // Corrected formula for sales prediction
+                const predictedSales = currentSales * (1 - elasticity * priceChangePercent / 100);
+                
+                return { ...result, predictedSales };
+            });
+    }, [elasticityResults, priceChangePercent, selectedSeason]);
 
-    // Date pentru graficul principal
+    const getDatasets = () => {
+        const currentSalesDataset = {
+            label: "Current Sales",
+            data: updatedElasticityResults.map(result => result.currentSales),
+            borderColor: "blue",
+            fill: false,
+            pointStyle: 'circle',
+            pointRadius: 5,
+        };
+
+        const predictedSalesDataset = {
+            label: priceChangePercent > 0 ? "Estimated Sales Increase" : "Estimated Sales Decrease",
+            data: updatedElasticityResults.map(result => result.predictedSales),
+            borderColor: priceChangePercent > 0 ? "green" : "red",
+            fill: false,
+            borderDash: [5, 5],
+            pointStyle: 'rectRot',
+            pointRadius: 5,
+        };
+
+        return [currentSalesDataset, predictedSalesDataset];
+    };
+
     const mainChartData = {
-        labels: elasticityResults.map(result => result.productType),
-        datasets: [
-            {
-                label: "Vânzări Curente",
-                data: elasticityResults.map(result => result.currentSales),
-                borderColor: "blue",
-                fill: false,
-            },
-            {
-                label: "Vânzări Estimate la Creștere",
-                data: elasticityResults.map(result => result.predictedIncrease),
-                borderColor: "green",
-                fill: false,
-            },
-            {
-                label: "Vânzări Estimate la Reducere",
-                data: elasticityResults.map(result => result.predictedDecrease),
-                borderColor: "red",
-                fill: false,
-            }
-        ]
+        labels: updatedElasticityResults.map(result => result.productType),
+        datasets: getDatasets(),
     };
 
     return (
         <div className="content-wrapper">
-            <h2>Estimarea Elasticității Prețului Cererii</h2>
-            <div className="input-group">
-                <label>Procent Schimbare Preț:</label>
-                <input
-                    type="number"
-                    value={priceChangePercent}
-                    onChange={(e) => setPriceChangePercent(parseFloat(e.target.value))}
-                />
-            </div>
+            <h2>Price Impact Demand Estimation</h2>
 
-            {!loading && (
+            <PriceInput 
+                priceChangePercent={priceChangePercent}
+                onPriceChange={setPriceChangePercent}
+            />
+            <SeasonSelector 
+                selectedSeason={selectedSeason}
+                onSeasonChange={setSelectedSeason}
+            />
+
+            {!loading && updatedElasticityResults.length === 0 && (
+                <p>No data available for season {selectedSeason}.</p>
+            )}
+
+            {!loading && updatedElasticityResults.length > 0 && (
                 <>
-                    <h3>Grafic Principal</h3>
+                    <h3>Main Chart</h3>
                     <div className="chart-container">
                         <Line data={mainChartData} />
                     </div>
 
-                    <h3>Predicții per Produs</h3>
+                    <h3>Predictions per Product in Season {selectedSeason}</h3>
                     <div className="small-charts-container">
-                        {elasticityResults.map((result, index) => {
+                        {updatedElasticityResults.map((result, index) => {
                             const productChartData = {
                                 labels: result.prices,
                                 datasets: [
                                     {
-                                        label: "Vânzări",
+                                        label: "Sales",
                                         data: result.sales,
-                                        borderColor: "blue",
-                                        fill: false,
+                                        backgroundColor: "rgba(54, 162, 235, 0.6)",
+                                        borderColor: "rgba(54, 162, 235, 1)",
+                                        borderWidth: 1,
                                     }
                                 ]
                             };
 
                             return (
                                 <div key={index} className="product-chart">
-                                    <h4>{result.productType}</h4>
-                                    <Line data={productChartData} />
-                                    <p>Elasticitate: {result.elasticity.toFixed(2)}</p>
-                                    <p>Vânzări Curente: {result.currentSales.toFixed(2)}</p>
-                                    <p>Vânzări Estimate la Creștere: {result.predictedIncrease.toFixed(2)}</p>
-                                    <p>Vânzări Estimate la Reducere: {result.predictedDecrease.toFixed(2)}</p>
+                                    <h4>{result.productType} ({result.season})</h4>
+                                    <Bar data={productChartData} />
+                                    <p>Elasticity: {result.elasticity.toFixed(2)}</p>
+                                    <p>Current Sales: {result.currentSales.toFixed(2)}</p>
+                                    <p>Estimated Sales: {result.predictedSales.toFixed(2)}</p>
                                 </div>
                             );
                         })}
@@ -160,4 +212,4 @@ const PriceElasticity = () => {
     );
 };
 
-export default PriceElasticity;
+export default PriceImpact;

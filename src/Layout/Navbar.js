@@ -22,12 +22,7 @@ const Navbar = () => {
               <span className="label">Home</span>
             </Link>
           </li>
-          <li>
-            <Link to="/sales-proportions">
-              <span className="icon">📊</span>
-              <span className="label">Sales Proportions</span>
-            </Link>
-          </li>
+        
           <li>
             <Link to="/client-profile">
               <span className="icon">👤</span>

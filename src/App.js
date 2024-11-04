@@ -2,7 +2,6 @@ import React from "react";
 import { BrowserRouter as Router, Route, Routes } from "react-router-dom";
 import SalesAnalysis from "./SalesAnalysis/SalesAnalysis";
 import ClientProfile from "./SalesAnalysis/ClientProfile";
-import SalesProportions from "./SalesAnalysis/SalesProportions";
 import SalesIntervals from "./SalesAnalysis/SalesIntervals";
 import FutureSales from "./SalesAnalysis/FutureSales";
 import PriceImpact from "./SalesAnalysis/PriceImpact";
@@ -15,7 +14,6 @@ const App = () => {
       <div className="content">
         <Routes>
           <Route path="/" element={<SalesAnalysis />} />
-          <Route path="/sales-proportions" element={<SalesProportions />} />
           <Route path="/client-profile" element={<ClientProfile />} />
           <Route path="/sales-intervals" element={<SalesIntervals />} />
           <Route path="/future-sales" element={<FutureSales />} />
