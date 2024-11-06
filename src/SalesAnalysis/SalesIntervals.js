@@ -136,7 +136,7 @@ const SalesHistogram = () => {
         const response = await fetch(`${process.env.PUBLIC_URL}/csvjson.json`);
         const salesData = await response.json();
         const subCategoryData = salesData.filter(sale => sale["Product Type"] === categoryName);
-
+    
         const subCategoryGrouped = {};
         subCategoryData.forEach((sale) => {
             const subCategory = sale["Product Subtype"];
@@ -145,36 +145,35 @@ const SalesHistogram = () => {
             }
             subCategoryGrouped[subCategory] += sale["Total Sale"];
         });
-
         const subCategoryValues = Object.values(subCategoryGrouped);
-        const maxSubCategoryValue = Math.max(...subCategoryValues);
-        const minSubCategoryValue = Math.min(...subCategoryValues);
+    const maxSubCategoryValue = Math.max(...subCategoryValues);
+    const minSubCategoryValue = Math.min(...subCategoryValues);
 
-        setSubCategoryData({
-            labels: Object.keys(subCategoryGrouped),
-            datasets: [
-                {
-                    type: "bar",
-                    label: `Sales for ${categoryName} (Bar)`,
-                    data: subCategoryValues,
-                    backgroundColor: subCategoryValues.map(value => 
-                        value === maxSubCategoryValue ? "rgba(173, 235, 173, 0.8)" :
-                        value === minSubCategoryValue ? "rgba(255, 173, 173, 0.8)" :
-                        "rgba(144, 238, 144, 0.6)"
-                    ),
-                },
-                {
-                    type: "line",
-                    label: `Sales for ${categoryName} (Line)`,
-                    data: subCategoryValues,
-                    borderColor: "rgba(144, 202, 249, 0.8)",
-                    borderWidth: 2,
-                    pointBackgroundColor: "rgba(144, 202, 249, 0.8)",
-                    fill: false,
-                },
-            ],
-        });
-    };
+    setSubCategoryData({
+        labels: Object.keys(subCategoryGrouped),
+        datasets: [
+            {
+                type: "bar",
+                label: `Sales for ${categoryName} (Bar)`,
+                data: subCategoryValues,
+                backgroundColor: subCategoryValues.map(value => 
+                    value === maxSubCategoryValue ? "rgba(173, 235, 173, 0.8)" : // Verde pentru maxim
+                    value === minSubCategoryValue ? "rgba(255, 173, 173, 0.8)" : // Roșu pentru minim
+                    "rgba(144, 202, 249, 0.8)" // Albastru pentru restul
+                ),
+            },
+            {
+                type: "line",
+                label: `Sales for ${categoryName} (Line)`,
+                data: subCategoryValues,
+                borderColor: "rgba(144, 202, 249, 0.8)",
+                borderWidth: 2,
+                pointBackgroundColor: "rgba(144, 202, 249, 0.8)",
+                fill: false,
+            },
+        ],
+    });
+};
 
     const handleBarClick = (event, elements) => {
         if (elements.length > 0) {
@@ -182,13 +181,20 @@ const SalesHistogram = () => {
             const categoryName = barLineData.labels[categoryIndex];
             setSelectedCategory(categoryName);
             fetchSubCategoryData(categoryName);
-
-            const offsetX = 20; 
-            const offsetY = 10;
-            setTooltipPosition({ top: event.native.clientY + offsetY, left: event.native.clientX + offsetX });
+    
+            // Obține poziția elementului din grafic
+            const element = elements[0].element;
+            const elementPosition = element.getCenterPoint();
+    
+            // Calculează poziția tooltip-ului față de bară
+            const tooltipX = elementPosition.x - 50; // Ajustează valoarea pentru centrarea tooltip-ului
+            const tooltipY = elementPosition.y - 80; // Poziționează deasupra elementului
+    
+            setTooltipPosition({ top: tooltipY, left: tooltipX });
             setTooltipVisible(true);
         }
     };
+    
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -244,26 +250,34 @@ const SalesHistogram = () => {
             </div>
 
             {tooltipVisible && subCategoryData && (
-                <div
-                    ref={tooltipRef}
-                    style={{
-                        position: "absolute",
-                        top: tooltipPosition.top,
-                        left: tooltipPosition.left,
-                        background: "white",
-                        padding: "10px",
-                        boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.2)",
-                        borderRadius: "5px",
-                        zIndex: 10,
-                    }}
-                >
-                    <h4>Sales by Subcategory for {selectedCategory}</h4>
-                    <Bar
-                        data={subCategoryData}
-                        options={{ responsive: true, scales: { y: { beginAtZero: true } } }}
-                    />
-                </div>
-            )}
+    <div
+        ref={tooltipRef}
+        style={{
+            position: "absolute",
+            top: tooltipPosition.top,
+            left: tooltipPosition.left,
+            background: "white",
+            padding: "10px",
+            boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.2)",
+            borderRadius: "5px",
+            zIndex: 10,
+            width: "300px", // Lățimea tooltip-ului
+            height: "250px", // Înălțimea tooltip-ului (fixată pentru a permite scroll-ul)
+            overflowY: "auto", // Scroll vertical automat
+        }}
+    >
+        <h4>Sales by Subcategory for {selectedCategory}</h4>
+        <Bar
+            data={subCategoryData}
+            options={{
+                responsive: true,
+                maintainAspectRatio: false, // Permite ajustarea înălțimii
+                scales: { y: { beginAtZero: true } },
+            }}
+            height={300} // Înălțimea graficului mai mare decât tooltip-ul pentru a activa scroll-ul
+        />
+    </div>
+)}
 
             <div style={{ width: "300px", height: "300px", marginBottom: "20px" }}>
                 <h3>Customer Category Breakdown</h3>
