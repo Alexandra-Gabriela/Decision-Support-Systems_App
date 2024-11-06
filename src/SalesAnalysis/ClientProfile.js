@@ -116,9 +116,16 @@ const CustomerPreferencesScatterPlot = () => {
                 <label htmlFor="preferences">Preferred Category:</label>
                 <select id="preferences" onChange={(e) => setPreferences(e.target.value)} style={{ padding: "8px", marginBottom: "10px" }} value={preferences}>
                     <option value="Sun Protection">Sun Protection</option>
-                    <option value="Moisturizer">Moisturizer</option>
+                    <option value="Skincare">Skincare</option>
                     <option value="Makeup">Makeup</option>
                     <option value="Hair Care">Hair Care</option>
+                    <option value="Fragrance">Fragrance</option>
+                    <option value="Nails">Nails</option>
+                    <option value="Hands">Hands</option>
+                    <option value="Sun protection">Sun protection</option>
+                    <option value="Hands">Hands</option>
+                    <option value="Eyes">Eyes</option>
+                    <option value="Lips">Lips</option>
                     <option value="">All</option>
                 </select>
             </div>
