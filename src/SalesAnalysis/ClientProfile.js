@@ -81,6 +81,7 @@ const CustomerPreferencesScatterPlot = () => {
                         region: sale["Region"],
                         quantitySold: sale["Quantity Sold"],
                         salesChange: sale["Sales Change (%)"],
+                        subtype: sale["Product Subtype"], // Include subtipul produsului
                     };
                 }),
             backgroundColor: color,
@@ -214,12 +215,13 @@ const CustomerPreferencesScatterPlot = () => {
                             tooltip: {
                                 callbacks: {
                                     label: (context) => {
-                                        const { region, quantitySold } = context.raw;
+                                        const { region, quantitySold, subtype } = context.raw;
                                         return [
                                             `Total Sale: $${context.raw.y}`,
                                             `Region: ${region}`,
+                                            `Subtype: ${subtype}`, // Display subtype
                                             `Quantity Sold: ${quantitySold}`,
-                                    
+                                            
                                         ];
                                     },
                                 },
