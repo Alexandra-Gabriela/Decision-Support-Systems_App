@@ -8,28 +8,33 @@ import {
     Legend,
 } from "chart.js";
 import { Scatter } from "react-chartjs-2";
-import "react-datepicker/dist/react-datepicker.css";
+import { Form, Spinner, Container, Row, Col, Card } from "react-bootstrap";
+import "bootstrap/dist/css/bootstrap.min.css";
 
 ChartJS.register(CategoryScale, LinearScale, PointElement, Tooltip, Legend);
-const ageRanges = ["13-22", "23-32", "33-42", "43-52", "53-62", "63-73"];
 
-const ageRangeToIndex = (ageRange) => {
-    switch (ageRange) {
-        case "13-22": return 0;
-        case "23-32": return 1;
-        case "33-42": return 2;
-        case "43-52": return 3;
-        case "53-62": return 4;
-        case "63-73": return 5;
-        default: return null;
-    }
-};
+const ageRanges = ["13-22", "23-32", "33-42", "43-52", "53-62", "63-73"];
+const productTypes = [
+    { type: "Sun Protection", color: "rgba(255, 99, 132, 0.6)" },
+    { type: "Skincare", color: "rgba(54, 162, 235, 0.6)" },
+    { type: "Makeup", color: "rgba(255, 206, 86, 0.6)" },
+    { type: "Hair Care", color: "rgba(75, 192, 192, 0.6)" },
+    { type: "Fragrance", color: "rgba(153, 102, 255, 0.6)" },
+    { type: "Nails", color: "rgba(255, 159, 64, 0.6)" },
+    { type: "Hands", color: "rgba(255, 99, 132, 0.3)" },
+    { type: "Eyes", color: "rgba(54, 162, 235, 0.3)" },
+    { type: "Lips", color: "rgba(255, 206, 86, 0.3)" },
+];
+
+const ageRangeToIndex = (ageRange) => ageRanges.indexOf(ageRange);
 
 const CustomerPreferencesScatterPlot = () => {
     const [loading, setLoading] = useState(true);
     const [salesData, setSalesData] = useState([]);
     const [gender, setGender] = useState("");
     const [preferences, setPreferences] = useState("");
+    const [salesChannel, setSalesChannel] = useState("");
+    const [promotion, setPromotion] = useState("");
     const [scatterData, setScatterData] = useState({ datasets: [] });
 
     const fetchSalesData = async () => {
@@ -50,118 +55,181 @@ const CustomerPreferencesScatterPlot = () => {
     }, []);
 
     const filterData = () => {
-        const filtered = salesData.filter((sale) => {
+        return salesData.filter((sale) => {
             const matchesGender = gender ? sale["Customer Gender"] === gender : true;
             const matchesPreferences = preferences ? sale["Product Type"] === preferences : true;
-
-            return matchesGender && matchesPreferences;
+            const matchesSalesChannel = salesChannel ? sale["Sales Channel"] === salesChannel : true;
+            const matchesPromotion = promotion ? sale["Promotion"] === promotion : true;
+            return matchesGender && matchesPreferences && matchesSalesChannel && matchesPromotion;
         });
-
-       // console.log("Selected Filters:", { gender, preferences });
-       // console.log("Filtered Data:", filtered.slice(0, 5));
-        return filtered;
     };
 
     const generateScatterData = () => {
         const filteredData = filterData();
-        const scatterData = {
-            datasets: [
-                {
-                    label: "Customer Preferences",
-                    data: filteredData
-                        .map((sale) => {
-                            const ageRange = sale["Age Range"];
-                            const ageIndex = ageRangeToIndex(ageRange);
-                            const totalSale = sale["Total Sale"];
-                           // console.log(`Age Range: ${ageRange}, Age Index: ${ageIndex}, Total Sale: ${totalSale}`);
-                            if (ageIndex !== null && totalSale >= 1000 && totalSale <= 9000) {
-                                return { x: ageRanges[ageIndex], y: totalSale };
-                            }
-                            return null;
-                        })
-                        .filter((point) => point !== null),
-                    backgroundColor: "rgba(75, 192, 192, 0.6)",
-                },
-            ],
-        };
-        return scatterData;
+
+        const datasets = productTypes.map(({ type, color }) => ({
+            label: type,
+            data: filteredData
+                .filter((sale) => sale["Product Type"] === type)
+                .map((sale) => {
+                    const ageRange = sale["Age Range"];
+                    const ageIndex = ageRangeToIndex(ageRange);
+                    const totalSale = sale["Total Sale"];
+                    return {
+                        x: ageRanges[ageIndex],
+                        y: totalSale,
+                        region: sale["Region"],
+                        quantitySold: sale["Quantity Sold"],
+                        salesChange: sale["Sales Change (%)"],
+                    };
+                }),
+            backgroundColor: color,
+        }));
+
+        return { datasets };
+    };
+
+    const calculateSummary = () => {
+        const filteredData = filterData();
+        const totalSales = filteredData.reduce((acc, sale) => acc + sale["Total Sale"], 0);
+        const averageSales = filteredData.length ? totalSales / filteredData.length : 0;
+        const quantitySold = filteredData.reduce((acc, sale) => acc + sale["Quantity Sold"], 0);
+
+        return { totalSales, averageSales, quantitySold };
     };
 
     useEffect(() => {
         const data = generateScatterData();
         setScatterData(data);
-    }, [salesData, gender, preferences]);
+    }, [salesData, gender, preferences, salesChannel, promotion]);
 
-    if (loading) return <p>Loading data...</p>;
-    
+    if (loading) return <Spinner animation="border" />;
+
+    const summary = calculateSummary();
 
     return (
-        <div style={{ display: "flex", flexDirection: "column", alignItems: "center", maxWidth: "800px", margin: "0 auto" }}>
+        <Container style={{ maxWidth: "800px", marginTop: "20px" }}>
             <h2>Customer Preferences</h2>
 
-            {/* Customer Details Filters */}
-            <h3>Customer Details</h3>
-            <div>
-                <label htmlFor="gender">Gender:</label>
-                <select id="gender" onChange={(e) => setGender(e.target.value)} style={{ padding: "8px", marginBottom: "10px" }} value={gender}>
-                    <option value="Male">Male</option>
-                    <option value="Female">Female</option>
-                    <option value="">All</option>
-                </select>
-            </div>
+            {/* Summary */}
+            <Row className="mb-4">
+                <Col>
+                    <Card>
+                        <Card.Body>
+                            <Card.Title>Total Sales</Card.Title>
+                            <Card.Text>${summary.totalSales.toFixed(2)}</Card.Text>
+                        </Card.Body>
+                    </Card>
+                </Col>
+                <Col>
+                    <Card>
+                        <Card.Body>
+                            <Card.Title>Average Sale</Card.Title>
+                            <Card.Text>${summary.averageSales.toFixed(2)}</Card.Text>
+                        </Card.Body>
+                    </Card>
+                </Col>
+                <Col>
+                    <Card>
+                        <Card.Body>
+                            <Card.Title>Total Quantity Sold</Card.Title>
+                            <Card.Text>{summary.quantitySold}</Card.Text>
+                        </Card.Body>
+                    </Card>
+                </Col>
+            </Row>
 
-            {/* Cosmetic Preferences Filter */}
-            <h3>Cosmetic Preferences</h3>
-            <div>
-                <label htmlFor="preferences">Preferred Category:</label>
-                <select id="preferences" onChange={(e) => setPreferences(e.target.value)} style={{ padding: "8px", marginBottom: "10px" }} value={preferences}>
-                    <option value="Sun Protection">Sun Protection</option>
-                    <option value="Skincare">Skincare</option>
-                    <option value="Makeup">Makeup</option>
-                    <option value="Hair Care">Hair Care</option>
-                    <option value="Fragrance">Fragrance</option>
-                    <option value="Nails">Nails</option>
-                    <option value="Hands">Hands</option>
-                    <option value="Sun protection">Sun protection</option>
-                    <option value="Hands">Hands</option>
-                    <option value="Eyes">Eyes</option>
-                    <option value="Lips">Lips</option>
-                    <option value="">All</option>
-                </select>
-            </div>
+            {/* Filters */}
+            <Form>
+                <Row className="mb-3">
+                    <Col md={6}>
+                        <Form.Group controlId="gender">
+                            <Form.Label>Gender</Form.Label>
+                            <Form.Control as="select" onChange={(e) => setGender(e.target.value)} value={gender}>
+                                <option value="">All</option>
+                                <option value="Male">Male</option>
+                                <option value="Female">Female</option>
+                            </Form.Control>
+                        </Form.Group>
+                    </Col>
+                    <Col md={6}>
+                        <Form.Group controlId="preferences">
+                            <Form.Label>Preferred Category</Form.Label>
+                            <Form.Control as="select" onChange={(e) => setPreferences(e.target.value)} value={preferences}>
+                                <option value="">All</option>
+                                {productTypes.map(({ type }) => (
+                                    <option key={type} value={type}>{type}</option>
+                                ))}
+                            </Form.Control>
+                        </Form.Group>
+                    </Col>
+                </Row>
+                <Row className="mb-3">
+                    <Col md={6}>
+                        <Form.Group controlId="salesChannel">
+                            <Form.Label>Sales Channel</Form.Label>
+                            <Form.Control as="select" onChange={(e) => setSalesChannel(e.target.value)} value={salesChannel}>
+                                <option value="">All</option>
+                                <option value="Distributors">Distributors</option>
+                                <option value="Online">Online</option>
+                            </Form.Control>
+                        </Form.Group>
+                    </Col>
+                    <Col md={6}>
+                        <Form.Group controlId="promotion">
+                            <Form.Label>Promotion</Form.Label>
+                            <Form.Control as="select" onChange={(e) => setPromotion(e.target.value)} value={promotion}>
+                                <option value="">All</option>
+                                <option value="Yes">Yes</option>
+                                <option value="No">No</option>
+                            </Form.Control>
+                        </Form.Group>
+                    </Col>
+                </Row>
+            </Form>
 
             {/* Scatter Plot */}
             <div style={{ width: "100%", marginTop: "20px" }}>
-                <Scatter 
-                    data={scatterData} 
-                    options={{ 
-                        responsive: true, 
-                        scales: { 
-                            x: { 
-                                type: "category", 
-                                labels: ageRanges, 
+                <Scatter
+                    data={scatterData}
+                    options={{
+                        responsive: true,
+                        scales: {
+                            x: {
+                                type: "category",
+                                labels: ageRanges,
                                 title: { display: true, text: "Age Range (Years)" },
-                                offset: true
-                               
-                            }, 
-                            y: { 
-                                title: { display: true, text: 'Total Sale ($)' }, 
-                                min: 1000, 
-                                max: 9000, 
+                                offset: true,
+                            },
+                            y: {
+                                title: { display: true, text: "Total Sale ($)" },
+                                min: 1000,
+                                max: 9000,
                                 ticks: {
-                                    stepSize: 1000, 
-                                    callback: (value) => {
-                                        return value >= 1000 && value <= 9000 ? value : '';
-                                    }
+                                    stepSize: 1000,
                                 },
-                            } 
-                        } 
-                    }} 
+                            },
+                        },
+                        plugins: {
+                            tooltip: {
+                                callbacks: {
+                                    label: (context) => {
+                                        const { region, quantitySold } = context.raw;
+                                        return [
+                                            `Total Sale: $${context.raw.y}`,
+                                            `Region: ${region}`,
+                                            `Quantity Sold: ${quantitySold}`,
+                                    
+                                        ];
+                                    },
+                                },
+                            },
+                        },
+                    }}
                 />
             </div>
-        </div>
+        </Container>
     );
-    
 };
 
 export default CustomerPreferencesScatterPlot;
