@@ -138,7 +138,7 @@ const PriceImpact = () => {
         };
 
         const predictedSalesDataset = {
-            label: priceChangePercent > 0 ? "Estimated Sales Increase" : "Estimated Sales Decrease",
+            label: priceChangePercent > 0 ? "Estimated Sales " : "Estimated Sales ",
             data: updatedElasticityResults.map(result => result.predictedSales),
             borderColor: priceChangePercent > 0 ? "green" : "red",
             fill: false,
