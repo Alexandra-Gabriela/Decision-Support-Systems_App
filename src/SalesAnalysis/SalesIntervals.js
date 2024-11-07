@@ -182,13 +182,13 @@ const SalesHistogram = () => {
             setSelectedCategory(categoryName);
             fetchSubCategoryData(categoryName);
     
-            // Obține poziția elementului din grafic
+            
             const element = elements[0].element;
             const elementPosition = element.getCenterPoint();
     
-            // Calculează poziția tooltip-ului față de bară
-            const tooltipX = elementPosition.x - 50; // Ajustează valoarea pentru centrarea tooltip-ului
-            const tooltipY = elementPosition.y - 80; // Poziționează deasupra elementului
+          
+            const tooltipX = elementPosition.x - 50; 
+            const tooltipY = elementPosition.y - 80; 
     
             setTooltipPosition({ top: tooltipY, left: tooltipX });
             setTooltipVisible(true);
@@ -261,9 +261,9 @@ const SalesHistogram = () => {
             boxShadow: "0px 4px 8px rgba(0, 0, 0, 0.2)",
             borderRadius: "5px",
             zIndex: 10,
-            width: "300px", // Lățimea tooltip-ului
-            height: "250px", // Înălțimea tooltip-ului (fixată pentru a permite scroll-ul)
-            overflowY: "auto", // Scroll vertical automat
+            width: "300px", 
+            height: "250px", 
+            overflowY: "auto", 
         }}
     >
         <h4>Sales by Subcategory for {selectedCategory}</h4>
@@ -271,10 +271,10 @@ const SalesHistogram = () => {
             data={subCategoryData}
             options={{
                 responsive: true,
-                maintainAspectRatio: false, // Permite ajustarea înălțimii
+                maintainAspectRatio: false, 
                 scales: { y: { beginAtZero: true } },
             }}
-            height={300} // Înălțimea graficului mai mare decât tooltip-ul pentru a activa scroll-ul
+            height={300} 
         />
     </div>
 )}

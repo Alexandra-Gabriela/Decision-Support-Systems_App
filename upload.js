@@ -1,5 +1,5 @@
 const admin = require("firebase-admin");
-const data = require("./csvjson.json"); // JSON-ul generat mai devreme
+const data = require("./csvjson.json"); 
 
 const serviceAccount = require("./serviceAccountKey.json");
 
@@ -10,7 +10,7 @@ admin.initializeApp({
 const db = admin.firestore();
 
 const uploadData = async () => {
-  const collectionRef = db.collection("date_csv"); // Numele colecției
+  const collectionRef = db.collection("date_csv"); 
 
   try {
     for (const item of data) {

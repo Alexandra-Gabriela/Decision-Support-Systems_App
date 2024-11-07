@@ -10,8 +10,8 @@ import Navbar from "./Layout/Navbar";
 const App = () => {
   return (
     <Router>
-      <Navbar /> {/* Navbar va fi afișat mereu */}
-      <div className="content">
+      <Navbar /> 
+            <div className="content">
         <Routes>
           <Route path="/" element={<SalesAnalysis />} />
           <Route path="/client-profile" element={<ClientProfile />} />

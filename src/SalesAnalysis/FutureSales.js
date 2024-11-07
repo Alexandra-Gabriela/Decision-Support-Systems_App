@@ -15,10 +15,10 @@ ChartJS.register(CategoryScale, LinearScale, PointElement, LineElement, Tooltip,
 
 const ForecastingModel = () => {
     const [salesData, setSalesData] = useState([]);
-    const [region, setRegion] = useState("Moldova"); // Setează regiunea prestabilită
+    const [region, setRegion] = useState("Moldova"); 
     const [filteredSales, setFilteredSales] = useState([]);
 
-    // Fetch data
+
     const fetchSalesData = async () => {
         try {
             const response = await fetch("/csvjson.json");
@@ -33,24 +33,23 @@ const ForecastingModel = () => {
         fetchSalesData();
     }, []);
 
-    // Filtrare după regiune
     useEffect(() => {
         const filtered = salesData.filter((sale) => sale.Region === region);
         setFilteredSales(filtered);
     }, [salesData, region]);
 
-    // Calculează coeficientul de regresie și generează predicții
+    
     const calculateLinearRegression = () => {
         const monthlySales = Array(12).fill(0);
-        const years = [2019, 2020, 2021, 2022, 2023]; // Anii disponibili
+        const years = [2019, 2020, 2021, 2022, 2023]; 
 
-        // Adună vânzările lunare
+    
         filteredSales.forEach((sale) => {
-            const month = sale.Month - 1; // Luna 0-indexed
+            const month = sale.Month - 1; 
             monthlySales[month] += sale["Total Sale"];
         });
 
-        // Verifică dacă există date suficiente
+
         if (monthlySales.length === 0) {
             return {
                 labels: [],
@@ -58,42 +57,41 @@ const ForecastingModel = () => {
             };
         }
 
-        // Calculul mediei
+        
         const meanY = monthlySales.reduce((a, b) => a + b) / monthlySales.length;
 
-        // Calcularea coeficientului pantei (m) și interceptului (b)
+       
         const m = monthlySales.reduce((acc, curr, idx) => acc + (idx * curr), 0) / monthlySales.reduce((acc, curr) => acc + (Math.pow(curr, 2)), 0);
-        const b = meanY - m * (monthlySales.length - 1) / 2; // Ajustare pentru intercept
-
-        // Generarea predicțiilor pentru următoarele 2 ani (2024, 2025)
+        const b = meanY - m * (monthlySales.length - 1) / 2; 
+        
         const predictedSales = [];
-        const futureMonths = Array.from({ length: 24 }, (_, i) => 12 + i + 1); // Predicții pentru lunile 13-36
+        const futureMonths = Array.from({ length: 24 }, (_, i) => 12 + i + 1); 
         futureMonths.forEach((month) => {
             predictedSales.push(m * month + b);
         });
 
-        // Generarea etichetelor pentru axa X (doar ani)
-        const extendedLabels = years.flatMap(year => [year]); // Adaugă anii
-        extendedLabels.push(2024, 2025); // Adaugă anul 2024 și 2025
+        
+        const extendedLabels = years.flatMap(year => [year]); 
+        extendedLabels.push(2024, 2025); 
 
         return {
             labels: extendedLabels,
             datasets: [
                 {
                     label: "Total Sales",
-                    data: monthlySales.slice(0, 5), // Primele 5 luni pentru anii 2019-2023
+                    data: monthlySales.slice(0, 5), 
                     borderColor: "rgba(75,192,192,1)",
                     backgroundColor: "rgba(75,192,192,0.4)",
                     tension: 0.2,
                 },
                 {
                     label: "Forecast",
-                    data: [...monthlySales.slice(0, 5), ...predictedSales], // Combină datele istorice cu previziunile
-                    borderColor: "rgba(255,99,132,1)", // Culoare diferită pentru previziuni
-                    backgroundColor: "rgba(255,99,132,0.4)", // Culoare de fundal diferită
+                    data: [...monthlySales.slice(0, 5), ...predictedSales], 
+                    borderColor: "rgba(255,99,132,1)", 
+                    backgroundColor: "rgba(255,99,132,0.4)", 
                     tension: 0.2,
-                    fill: false, // Nu umple sub linie
-                    borderWidth: 3, // Lățimea liniei de previziune
+                    fill: false, 
+                    borderWidth: 3, 
                 },
             ],
         };
@@ -103,7 +101,7 @@ const ForecastingModel = () => {
         <div style={{maxWidth: "800px", margin: "0 auto" }}>
             <h2 style={{textAlign: "center"}}>Sales Forecast by Region</h2>
 
-            {/* Filtru pentru regiune */}
+            
             <div>
                 <label>Region: </label>
                 <select value={region} onChange={(e) => setRegion(e.target.value)}>
@@ -115,7 +113,6 @@ const ForecastingModel = () => {
                 </select>
             </div>
 
-            {/* Grafic de linie */}
             <div style={{ marginTop: "20px" }}>
                 <Line
                     data={calculateLinearRegression()}
@@ -125,12 +122,12 @@ const ForecastingModel = () => {
                             x: {
                                 title: { display: true, text: "Years" },
                                 ticks: {
-                                    autoSkip: false, // Arată toate etichetele pe axa X
+                                    autoSkip: false, 
                                 },
                             },
                             y: {
                                 min: 0,
-                                max: 300000, // Setează valoarea maximă la 300.000
+                                max: 300000, 
                                 title: { display: true, text: "Total Sales ($)" },
                                 beginAtZero: true,
                             },

@@ -120,7 +120,7 @@ const PriceImpact = () => {
             .map(result => {
                 const { elasticity, currentSales } = result;
                 
-                // Corrected formula for sales prediction
+                
                 const predictedSales = currentSales * (1 - elasticity * priceChangePercent / 100);
                 
                 return { ...result, predictedSales };

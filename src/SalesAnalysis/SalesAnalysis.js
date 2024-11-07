@@ -50,7 +50,7 @@ const SalesAnalysis = () => {
     });
 
     if (Object.keys(filteredData).length === 0) {
-      setData(null); // Setăm data la null dacă nu există date filtrate
+      setData(null); 
     } else {
       const chartData = {
         labels: Object.keys(filteredData),
@@ -89,7 +89,7 @@ const SalesAnalysis = () => {
     });
 
     if (Object.keys(filteredData).length === 0) {
-      setData(null); // Setăm data la null dacă nu există date filtrate
+      setData(null); 
     } else {
       const chartData = {
         labels: Object.keys(filteredData),

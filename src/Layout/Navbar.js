@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
-import "./Navbar.css"; // Asigură-te că adaugi acest fișier CSS pentru stiluri
+import "./Navbar.css"; 
 
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false);

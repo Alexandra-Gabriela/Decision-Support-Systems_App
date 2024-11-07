@@ -1,4 +1,4 @@
-/* Containerul pentru navbar */
+
 .navbar-container {
     position: relative;
   }
@@ -14,7 +14,7 @@
     left: 10px;
   }
   
-  /* Sidebar stilizat */
+
   .sidebar {
     position: fixed;
     top: 0;
@@ -33,7 +33,7 @@
     width: 200px;
   }
   
-  /* Lista de linkuri */
+  
   .sidebar ul {
     list-style: none;
     padding: 0;
@@ -65,7 +65,7 @@
   
   .icon {
     font-size: 1.5rem;
-    width: 30px; /* Aliniere consistentă pentru icon */
+    width: 30px; 
     text-align: center;
   }
   
@@ -75,7 +75,7 @@
     white-space: nowrap;
   }
   
-  /* Doar când meniul este deschis se vede textul */
+  
   .sidebar.open .label {
     opacity: 1;
   }
