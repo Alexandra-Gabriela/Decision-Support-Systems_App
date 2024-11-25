@@ -13,6 +13,7 @@ import {
 import { Bar, Pie } from "react-chartjs-2";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
+import ModalForm from "./modalSI";
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, LineElement, PointElement, ArcElement, Tooltip, Legend);
 
@@ -27,13 +28,15 @@ const SalesHistogram = () => {
     const [tooltipVisible, setTooltipVisible] = useState(false);
     const [tooltipPosition, setTooltipPosition] = useState({ top: 0, left: 0 });
     const tooltipRef = useRef();
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [csvjson, setCsvjson] = useState([]);
 
     const fetchSalesData = async () => {
         setLoading(true);
         try {
             const response = await fetch(`${process.env.PUBLIC_URL}/csvjson.json`);
             const salesData = await response.json();
-
+            setCsvjson(salesData);
             const filteredData = salesData.filter((sale) => {
                 const saleDate = new Date(sale.Date);
                 const matchesDate = saleDate.getFullYear() === selectedDate.getFullYear() &&
@@ -206,6 +209,30 @@ const SalesHistogram = () => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
+    const handleExportExcel = async (filters) => {
+        try {
+            const response = await fetch("http://localhost:3001/generate-excel", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify(filters),
+            });
+    
+            const blob = await response.blob();
+            const url = window.URL.createObjectURL(blob);
+            const link = document.createElement("a");
+            link.href = url;
+            link.download = "ExportedData.xlsx";
+            link.click();
+        } catch (error) {
+            console.error("Error exporting Excel:", error);
+        }
+    };
+
+    const toggleModal = () => {
+        setIsModalOpen(!isModalOpen);
+    };
     useEffect(() => {
         fetchSalesData();
     }, [selectedDate, customerGender]);
@@ -233,7 +260,26 @@ const SalesHistogram = () => {
                 <option value="Male">Male</option>
                 <option value="Female">Female</option>
             </select>
+                <div>  </div>
+            <button
+                style={{
+                    padding: "10px 20px",
+                    backgroundColor: "blue",
+                    color: "white",
+                    borderRadius: "5px",
+                }}
+                onClick={toggleModal}
+            >
+               Export?
+            </button>
 
+            {/* Integrează componenta ModalForm */}
+            <ModalForm
+                isOpen={isModalOpen}
+                onClose={toggleModal}
+                onExportExcel={handleExportExcel}
+                jsonData={csvjson}
+            />
             <div style={{ width: "100%", marginBottom: "20px" }}>
                 {barLineData.labels && barLineData.labels.length > 0 ? (
                     <Bar
@@ -286,7 +332,8 @@ const SalesHistogram = () => {
                 ) : (
                     <p>No data available for pie chart.</p>
                 )}
-            </div>
+
+        </div>
         </div>
     );
 };
