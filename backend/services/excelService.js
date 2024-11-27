@@ -1,38 +1,77 @@
-const fs = require('fs');
-const path = require('path');
-const ExcelJS = require('exceljs'); // Asigură-te că ai importat ExcelJS
-const { exec } = require('child_process');
+const fs = require("fs");
+const path = require("path");
+const ExcelJS = require("exceljs");
+const { exec } = require("child_process");
 
-// Funcția care filtrează datele
 const getFilteredData = (filters) => {
     const rawDataPath = path.join(__dirname, "../csvjson.json");
 
-    // Verificăm dacă fișierul există
     if (!fs.existsSync(rawDataPath)) {
-        throw new Error("Fișierul csvjson.json nu există.");
+        throw new Error("File csvjson.json doesn't exist.");
     }
 
     const rawData = fs.readFileSync(rawDataPath);
     const salesData = JSON.parse(rawData);
 
-    return salesData.filter((sale) => {
-        const matchesYear = filters.year ? sale.Year === parseInt(filters.year) : true;
-        const matchesCategory = filters.productCategory ? sale["Product Type"] === filters.productCategory : true;
-        const matchesGender = filters.gender ? sale["Customer Gender"] === filters.gender : true;
-        const matchesRegion = filters.region ? sale.Region === filters.region : true;
+    let filteredData = salesData;
 
-        return matchesYear && matchesCategory && matchesGender && matchesRegion;
-    });
+    if (filters.year && filters.month) {
+        filteredData = filteredData.filter((sale) => {
+            const saleYear = parseInt(sale.Year);
+            const saleMonth = parseInt(sale.Month);
+            return saleYear === parseInt(filters.year) && saleMonth === parseInt(filters.month);
+        });
+    }
+
+    if (filters.productCategory) {
+        filteredData = filteredData.filter((sale) =>
+            sale["Product Type"].toLowerCase() === filters.productCategory.toLowerCase()
+        );
+    }
+
+    if (filters.gender) {
+        filteredData = filteredData.filter((sale) =>
+            sale["Customer Gender"].toLowerCase() === filters.gender.toLowerCase()
+        );
+    }
+
+    if (filters.region) {
+        filteredData = filteredData.filter((sale) =>
+            sale.Region.toLowerCase() === filters.region.toLowerCase()
+        );
+    }
+
+    return filteredData;
 };
 
-// Funcția care generează fișierul Excel
+const calculateExtremes = (worksheet) => {
+    let maxSalesAmount = Number.NEGATIVE_INFINITY;
+    let minSalesAmount = Number.POSITIVE_INFINITY;
+    let maxTotalSale = Number.NEGATIVE_INFINITY;
+    let minTotalSale = Number.POSITIVE_INFINITY;
+    let maxQuantitySold = Number.NEGATIVE_INFINITY;
+
+    worksheet.eachRow((row, rowNumber) => {
+        if (rowNumber === 1) return; // Skip header row
+        const salesAmount = parseFloat(row.getCell("Sales Amount").value) || 0;
+        const totalSale = parseFloat(row.getCell("Total Sale").value) || 0;
+        const quantitySold = parseFloat(row.getCell("Quantity Sold").value) || 0;
+
+        maxSalesAmount = Math.max(maxSalesAmount, salesAmount);
+        minSalesAmount = Math.min(minSalesAmount, salesAmount);
+        maxTotalSale = Math.max(maxTotalSale, totalSale);
+        minTotalSale = Math.min(minTotalSale, totalSale);
+        maxQuantitySold = Math.max(maxQuantitySold, quantitySold);
+    });
+
+    return { maxSalesAmount, minSalesAmount, maxTotalSale, minTotalSale, maxQuantitySold };
+};
+
 const generateExcelFile = async (filters) => {
-    // Filtrăm datele pe baza criteriilor
     const data = getFilteredData(filters);
 
-    // Verificăm dacă sunt date după filtrare
     if (data.length === 0) {
-        throw new Error("Nu au fost găsite date care să corespundă filtrului.");
+        throw new Error("No data matching the filters.");
     }
 
     const workbook = new ExcelJS.Workbook();
@@ -54,119 +93,105 @@ const generateExcelFile = async (filters) => {
         { header: "Sales Change (%)", key: "Sales Change (%)", width: 20 },
     ];
 
-    // Formatarea antetului
+    worksheet.addRows(data);
+
+    // Header formatting
     worksheet.getRow(1).eachCell((cell) => {
         cell.font = { bold: true, color: { argb: "FFFFFF" } };
-        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "4F81BD" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "5B9BD5" } }; // Blue
         cell.alignment = { horizontal: "center", vertical: "middle" };
     });
 
-    worksheet.addRows(data);
+    const extremes = calculateExtremes(worksheet);
 
-    let maxSalesAmount = Number.NEGATIVE_INFINITY;
-    let minSalesAmount = Number.POSITIVE_INFINITY;
-    let maxTotalSale = Number.NEGATIVE_INFINITY;
-    let minTotalSale = Number.POSITIVE_INFINITY;
-    let maxQuantitySold = Number.NEGATIVE_INFINITY;
-
-    // Determinarea valorilor maxime/minime pentru a aplica formatarea coloristică
     worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return; // Ignoră antetul
-        const salesAmount = parseFloat(row.getCell('Sales Amount').value) || 0;
-        const totalSale = parseFloat(row.getCell('Total Sale').value) || 0;
-        const quantitySold = parseFloat(row.getCell('Quantity Sold').value) || 0;
+        if (rowNumber === 1) return;
 
-        maxSalesAmount = Math.max(maxSalesAmount, salesAmount);
-        minSalesAmount = Math.min(minSalesAmount, salesAmount);
-        maxTotalSale = Math.max(maxTotalSale, totalSale);
-        minTotalSale = Math.min(minTotalSale, totalSale);
-        maxQuantitySold = Math.max(maxQuantitySold, quantitySold);
+        const totalSale = parseFloat(row.getCell("Total Sale").value) || 0;
+        const isMaxTotalSale = totalSale === extremes.maxTotalSale;
+        const isMinTotalSale = totalSale === extremes.minTotalSale;
+
+        if (isMaxTotalSale) {
+            row.eachCell((cell) => {
+                cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "C6EFCE" } }; // Light Green
+                cell.font = { color: { argb: "006100" } }; // Dark Green text
+            });
+        } else if (isMinTotalSale) {
+            row.eachCell((cell) => {
+                cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFC7CE" } }; // Light Red
+                cell.font = { color: { argb: "9C0006" } }; // Dark Red text
+            });
+        }
+
+        const salesAmount = parseFloat(row.getCell("Sales Amount").value) || 0;
+        if (!isMaxTotalSale && !isMinTotalSale) {
+            if (salesAmount === extremes.maxSalesAmount) {
+                row.getCell("Sales Amount").fill = {
+                    type: "pattern",
+                    pattern: "solid",
+                    fgColor: { argb: "C6EFCE" },
+                }; // Light Green
+                row.getCell("Sales Amount").font = { color: { argb: "006100" } };
+            } else if (salesAmount === extremes.minSalesAmount) {
+                row.getCell("Sales Amount").fill = {
+                    type: "pattern",
+                    pattern: "solid",
+                    fgColor: { argb: "FFC7CE" },
+                }; // Light Red
+                row.getCell("Sales Amount").font = { color: { argb: "9C0006" } };
+            }
+        }
+
+        const quantitySold = parseFloat(row.getCell("Quantity Sold").value) || 0;
+        const barLength = Math.round((quantitySold / extremes.maxQuantitySold) * 10);
+        const progressBar = `${"█".repeat(barLength)}${" ".repeat(10 - barLength)}`;
+        row.getCell("Quantity Sold").value = `${progressBar} ${quantitySold}`;
+        row.getCell("Quantity Sold").font = { bold: true, color: { argb: "5B9BD5" } };
+        row.getCell("Quantity Sold").alignment = { horizontal: "left", vertical: "middle" };
+
+        const salesChange = parseFloat(row.getCell("Sales Change (%)").value) || 0;
+        let emoji = "";
+        let fillColor = "";
+
+        if (salesChange > 20) {
+            emoji = "▲";
+            fillColor = "006100"; // Dark Green
+        } else if (salesChange >= 10) {
+            emoji = "⇧";
+            fillColor = "C6EFCE"; // Light Green
+        } else if (salesChange > -10) {
+            emoji = "➔";
+            fillColor = "FFEB9C"; // Yellow
+        } else if (salesChange >= -20) {
+            emoji = "⇩";
+            fillColor = "FFC7CE"; // Light Red
+        } else {
+            emoji = "▼";
+            fillColor = "9C0006"; // Dark Red
+        }
+
+        const salesChangeCell = row.getCell("Sales Change (%)");
+        salesChangeCell.value = `${emoji} ${salesChange.toFixed(2)}%`;
+        salesChangeCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fillColor } };
     });
 
-    // Aplicarea formatării
-    worksheet.eachRow((row, rowNumber) => {
-        if (rowNumber === 1) return; // Ignoră antetul
+    // Add total row
+    const totalRow = worksheet.addRow({
+        "Date": "Total",
+        "Sales Amount": { formula: `SUM(${worksheet.getColumn("Sales Amount").letter}2:${worksheet.getColumn("Sales Amount").letter}${worksheet.rowCount})` },
+        "Quantity Sold": { formula: `SUM(${worksheet.getColumn("Quantity Sold").letter}2:${worksheet.getColumn("Quantity Sold").letter}${worksheet.rowCount})` },
+        "Total Sale": { formula: `SUM(${worksheet.getColumn("Total Sale").letter}2:${worksheet.getColumn("Total Sale").letter}${worksheet.rowCount})` },
+    });
 
-        const salesAmount = parseFloat(row.getCell('Sales Amount').value) || 0;
-        const salesScale = (salesAmount - minSalesAmount) / (maxSalesAmount - minSalesAmount);
-        const red = Math.round(255 - salesScale * 255);
-        const green = Math.round(salesScale * 255);
-
-        // Aplica culoarea la celula "Sales Amount"
-        row.getCell('Sales Amount').fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: `${red.toString(16).padStart(2, '0')}${green.toString(16).padStart(2, '0')}00` },
-        };
-
-        const totalSale = parseFloat(row.getCell('Total Sale').value) || 0;
-        // Adaugă emoji pentru creșterea sau scăderea vânzărilor în Total Sale
-        if (totalSale === maxTotalSale) {
-            row.getCell('Total Sale').value += " 🔼";
-        } else if (totalSale === minTotalSale) {
-            row.getCell('Total Sale').value += " 🔽";
-        }
-
-        const salesChange = parseFloat(row.getCell('Sales Change (%)').value) || 0;
-        let emoji = '';
-        let fontColor = '';
-        let fillColor = '';
-
-        // Determinarea emoji-urilor și a culorilor pentru "Sales Change (%)"
-        if (salesChange > 20) {
-            emoji = '▲'; // Creștere mare
-            fillColor = '006400'; // Verde închis
-            fontColor = 'FFFFFF'; // Alb
-        } else if (salesChange >= 10 && salesChange <= 20) {
-            emoji = '⇧'; // Creștere moderată
-            fillColor = '90EE90'; // Verde deschis
-            fontColor = '000000'; // Negru
-        } else if (salesChange > -10 && salesChange < 10) {
-            emoji = '➔'; // Constant
-            fillColor = 'FFFF00'; // Galben
-            fontColor = '000000'; // Negru
-        } else if (salesChange >= -20 && salesChange <= -10) {
-            emoji = '⇩'; // Scădere moderată
-            fillColor = 'FFB6C1'; // Roșu deschis
-            fontColor = '000000'; // Negru
-        } else if (salesChange < -20) {
-            emoji = '▼'; // Scădere mare
-            fillColor = '8B0000'; // Roșu închis
-            fontColor = 'FFFFFF'; // Alb
-        }
-
-        // Actualizează celula cu simbolul și valoarea
-        const cell = row.getCell('Sales Change (%)');
-        cell.value = `${emoji} ${salesChange.toFixed(2)}%`;
-
-        // Aplica stilul de culoare și font
-        cell.fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: fillColor },
-        };
-        cell.font = {
-            color: { argb: fontColor },
-            bold: true,
-        };
-
-        // Actualizează celula "Quantity Sold" cu o bară de progres și culoare pastel
-        const quantitySold = parseFloat(row.getCell('Quantity Sold').value) || 0;
-        const barLength = Math.round((quantitySold / maxQuantitySold) * 10);
-
-        // Creează bara de progres (simboluri █) și adaugă numărul de produse vândute la final
-        row.getCell('Quantity Sold').value = `${'█'.repeat(barLength)} ${quantitySold}`;
-        row.getCell('Quantity Sold').fill = {
-            type: 'pattern',
-            pattern: 'solid',
-            fgColor: { argb: 'ADD8E6' }, // Culoare albastru pastel
-        };
+    totalRow.eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: "FFFFFF" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "5B9BD5" } }; // Blue
+        cell.alignment = { horizontal: "center", vertical: "middle" };
     });
 
     const filePath = path.join(__dirname, "../ExportedData.xlsx");
     await workbook.xlsx.writeFile(filePath);
 
-    // Deschide fișierul Excel automat
     exec(`start excel "${filePath}"`, (err) => {
         if (err) {
             console.error("Error opening Excel file:", err);
@@ -175,7 +200,7 @@ const generateExcelFile = async (filters) => {
         }
     });
 
-    return filePath; // Returnează calea fișierului
+    return filePath;
 };
 
 module.exports = { generateExcelFile, getFilteredData };

@@ -26,30 +26,19 @@ const ModalForm = ({ isOpen, onClose, onExportExcel, jsonData }) => {
     }, [jsonData]);
 
     const handleExport = () => {
-        if (yearAndMonth) {
-            const selectedYear = yearAndMonth.getFullYear();
-            const selectedMonth = yearAndMonth.getMonth() + 1; // getMonth() este 0-indexat
-            console.log("Filters sent:", { 
-                year: selectedYear, 
-                month: selectedMonth, 
-                productCategory, 
-                gender, 
-                region 
-            });
-            onExportExcel({ year: selectedYear, month: selectedMonth, productCategory, gender, region });
-        } else {
-            console.log("Filters sent:", { 
-                year: null, 
-                month: null, 
-                productCategory, 
-                gender, 
-                region 
-            });
-            onExportExcel({ year: null, month: null, productCategory, gender, region });
-        }
+        const filters = {
+            year: yearAndMonth ? yearAndMonth.getFullYear() : null,
+            month: yearAndMonth ? yearAndMonth.getMonth() + 1 : null, // Transmite doar luna
+            productCategory,
+            gender,
+            region,
+        };
+        console.log("Filters sent to backend:", filters); // Verifică ce filtre trimiți
+        onExportExcel(filters);
         onClose();
     };
-
+    
+    
     if (!isOpen) return null;
 
     return (

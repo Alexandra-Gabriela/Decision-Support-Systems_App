@@ -1,10 +1,11 @@
-const { generateExcelFile, getFilteredData } = require("../services/excelService");
+const { generateExcelFile } = require("../services/excelService");
 
 const generateExcel = async (req, res) => {
     try {
         const filters = req.body;
-        const data = getFilteredData(filters); // Aici se folosește funcția getFilteredData
-        const filePath = await generateExcelFile(data);
+        console.log("Controller received filters:", filters); // Log pentru verificare
+
+        const filePath = await generateExcelFile(filters); // Trimite filters direct
 
         res.status(200).json({ message: "Excel file generated successfully", path: filePath });
     } catch (error) {

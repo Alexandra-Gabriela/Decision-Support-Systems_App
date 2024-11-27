@@ -209,20 +209,14 @@ const SalesHistogram = () => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const handleExportExcel = async () => {
-        // Definirea filtrelor care vor fi trimise către backend
-        const filters = {
-            selectedDate: selectedDate, // adaugă data selectată
-            customerGender: customerGender // adaugă genul selectat
-        };
-    
+    const handleExportExcel = async (filters) => { // Acceptă filters ca parametru
         try {
             const response = await fetch('http://localhost:3001/api/generate-excel', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                 },
-                body: JSON.stringify(filters) // trimite datele pentru export
+                body: JSON.stringify(filters) // Trimite direct obiectul filters
             });
     
             if (!response.ok) {
@@ -235,6 +229,7 @@ const SalesHistogram = () => {
             console.error("Error exporting Excel:", error);
         }
     };
+    
     
 
     const toggleModal = () => {
