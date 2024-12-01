@@ -1,109 +1,63 @@
-import React, { useState, useEffect } from 'react';
-import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
-import ModalCartograma from './ModalCartograma';
-import FilterModal from './FilterModal';
-import L from 'leaflet';
-import 'leaflet/dist/leaflet.css';
+// FilterModal.js
+import React, { useState } from 'react';
+import Modal from 'react-modal';
 
-const Cartograma = () => {
-  const [salesData, setSalesData] = useState([]);
-  const [filteredData, setFilteredData] = useState([]);
-  const [isFilterModalOpen, setFilterModalOpen] = useState(false);
-  const [isExportModalOpen, setExportModalOpen] = useState(false);
+Modal.setAppElement('#root');
 
-  useEffect(() => {
-    const exampleSalesData = [
-      { id: 'Moldova', name: 'Moldova', coords: [45.5, 27.5], productType: 'Skincare', gender: 'Female', salesAmount: 100 },
-      { id: 'Banat', name: 'Banat', coords: [45.7495, 21.2087], productType: 'Makeup', gender: 'Male', salesAmount: 200 },
-      { id: 'Muntenia', name: 'Muntenia', coords: [44.4268, 26.1025], productType: 'Fragrance', gender: 'Female', salesAmount: 300 },
-      { id: 'Dobrogea', name: 'Dobrogea', coords: [44.035, 28.66], productType: 'Nails', gender: 'Male', salesAmount: 150 },
-      { id: 'Ardeal', name: 'Ardeal', coords: [46.7704, 23.5897], productType: 'Skincare', gender: 'Female', salesAmount: 180 },
-      { id: 'Maramureș', name: 'Maramureș', coords: [47.6462, 24.3817], productType: 'Makeup', gender: 'Male', salesAmount: 220 },
-      { id: 'Bucovina', name: 'Bucovina', coords: [47.6401, 25.5889], productType: 'Fragrance', gender: 'Female', salesAmount: 250 },
-      { id: 'Transilvania', name: 'Transilvania', coords: [46.1, 25], productType: 'Nails', gender: 'Male', salesAmount: 170 },
-    ];
-    setSalesData(exampleSalesData);
-    setFilteredData(exampleSalesData);
-  }, []);
+const FilterModal = ({ isOpen, onClose, onApplyFilters }) => {
+  const [filters, setFilters] = useState({
+    date: '',
+    productType: '',
+    productSubtype: '',
+    customerCategory: '',
+    customerGender: '',
+    ageRange: '',
+    country: '',
+    region: '',
+    salesAmount: '',
+  });
 
-  // Aplică filtrele din modal
-  const handleApplyFilters = (filters) => {
-    let data = salesData;
-
-    if (filters.date) {
-      data = data.filter((sale) => sale.date === filters.date);
-    }
-    if (filters.productType) {
-      data = data.filter((sale) => sale.productType === filters.productType);
-    }
-    if (filters.gender) {
-      data = data.filter((sale) => sale.gender === filters.gender);
-    }
-
-    setFilteredData(data);
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    setFilters({ ...filters, [name]: value });
   };
 
-  // Exportă datele în Excel (simulare)
-  const handleExportExcel = () => {
-    alert('Exporting data to Excel...');
-    setExportModalOpen(false);
+  const handleSubmit = () => {
+    onApplyFilters(filters); // Aplică filtrele și trimite-le înapoi
+    onClose(); // Închide modalul
   };
 
   return (
-    <div>
-      <h2>Harta Vânzărilor</h2>
-
-      {/* Butoane pentru filtre și export */}
-      <div style={{ marginBottom: '20px' }}>
-        <button onClick={() => setFilterModalOpen(true)}>Filtrează Date</button>
-        <button onClick={() => setExportModalOpen(true)}>Exportă Date</button>
-      </div>
-
-      {/* Harta */}
-      <MapContainer center={[45.9432, 24.9668]} zoom={6} style={{ height: '500px', width: '100%' }}>
-        <TileLayer
-          url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-          attribution="&copy; <a href='https://www.openstreetmap.org/copyright'>OpenStreetMap</a> contributors"
+    <Modal
+      isOpen={isOpen}
+      onRequestClose={onClose}
+      style={{
+        overlay: { backgroundColor: 'rgba(0, 0, 0, 0.7)' },
+        content: {
+          top: '50%',
+          left: '50%',
+          transform: 'translate(-50%, -50%)',
+          width: '400px',
+          padding: '20px',
+          borderRadius: '10px',
+        },
+      }}
+    >
+      <h2>Select Filters</h2>
+      <div>
+        <label>Date</label>
+        <input
+          type="date"
+          name="date"
+          value={filters.date}
+          onChange={handleChange}
         />
-
-        {/* Marker pentru fiecare locație */}
-        {filteredData.map((sale) => (
-          <Marker
-            key={sale.id}
-            position={sale.coords}
-            icon={new L.Icon({
-              iconUrl: 'https://example.com/push-pin.png', // Înlocuiește cu URL-ul corect al imaginii
-              iconSize: [32, 32],
-              iconAnchor: [16, 32],
-              popupAnchor: [0, -32],
-            })}
-          >
-            <Popup>
-              <strong>Regiune:</strong> {sale.name} <br />
-              <strong>Produs:</strong> {sale.productType} <br />
-              <strong>Gen:</strong> {sale.gender} <br />
-              <strong>Vânzări:</strong> {sale.salesAmount} <br />
-            </Popup>
-          </Marker>
-        ))}
-      </MapContainer>
-
-      {/* Modal pentru filtre */}
-      <FilterModal
-        isOpen={isFilterModalOpen}
-        onClose={() => setFilterModalOpen(false)}
-        onApplyFilters={handleApplyFilters}
-      />
-
-      {/* Modal pentru export */}
-      <ModalCartograma
-        isOpen={isExportModalOpen}
-        onClose={() => setExportModalOpen(false)}
-        onExportExcel={handleExportExcel}
-        jsonData={filteredData}
-      />
-    </div>
+      </div>
+      {/* Altele filtre */}
+      <button onClick={handleSubmit}>Apply Filters</button>
+      <button onClick={onClose}>Cancel</button>
+    </Modal>
   );
 };
 
-export default Cartograma;
+export default FilterModal; // Asigură-te că este exportat corect
