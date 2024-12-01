@@ -1,10 +1,8 @@
-import React, { useEffect, useState } from "react";
-import { Chart as ChartJS, ArcElement, Tooltip, Legend, BarElement, CategoryScale, LinearScale } from "chart.js";
+import React, { useEffect, useState } from "react"; 
+import { useNavigate } from "react-router-dom";  // Import useNavigate for routing
 import { Pie, Doughnut, Bar } from "react-chartjs-2";
 import DatePicker from "react-datepicker";
 import "react-datepicker/dist/react-datepicker.css";
-
-ChartJS.register(ArcElement, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
 
 const SalesAnalysis = () => {
   const [data, setData] = useState(null);
@@ -14,6 +12,8 @@ const SalesAnalysis = () => {
   const [productTypes, setProductTypes] = useState([]);
   const [chartType, setChartType] = useState("Pie");
   const [salesData, setSalesData] = useState([]);
+
+  const navigate = useNavigate();  // Initialize the navigation function
 
   useEffect(() => {
     const loadJsonData = async () => {
@@ -124,6 +124,10 @@ const SalesAnalysis = () => {
     }
   }, [selectedProductType, salesData]);
 
+  const handleOpenCartograma = () => {
+    navigate("/cartograma");  // Navigate to the Cartograma page
+  };
+
   if (loading) return <p>Loading data...</p>;
 
   return (
@@ -195,6 +199,11 @@ const SalesAnalysis = () => {
           <p>Data not available.</p>
         )}
       </div>
+
+      {/* Button to open Cartograma */}
+      <button style={{ marginTop: "20px", padding: "10px 20px" }} onClick={handleOpenCartograma}>
+        Open Cartograma
+      </button>
     </div>
   );
 };

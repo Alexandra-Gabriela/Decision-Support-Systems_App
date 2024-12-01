@@ -36,3 +36,10 @@
     transform: rotate(360deg);
   }
 }
+
+.custom-overlay {
+  background-color: rgba(255, 255, 255, 0.9); /* Fundal alb semi-transparent */
+  padding: 0px; /* Spațiere internă */
+  border-radius: 8px; /* Colțuri rotunjite */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Umbra */
+}
