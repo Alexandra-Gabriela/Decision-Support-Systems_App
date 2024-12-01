@@ -129,24 +129,24 @@ const generateExcelFile = async (filters) => {
                 row.getCell("Sales Amount").fill = {
                     type: "pattern",
                     pattern: "solid",
-                    fgColor: { argb: "C6EFCE" },
-                }; // Light Green
+                    fgColor: { argb: "D9EAD3" },
+                };
                 row.getCell("Sales Amount").font = { color: { argb: "006100" } };
             } else if (salesAmount === extremes.minSalesAmount) {
                 row.getCell("Sales Amount").fill = {
                     type: "pattern",
                     pattern: "solid",
-                    fgColor: { argb: "FFC7CE" },
-                }; // Light Red
+                    fgColor: { argb: "F4CCCC" },
+                }; 
                 row.getCell("Sales Amount").font = { color: { argb: "9C0006" } };
             }
         }
 
         const quantitySold = parseFloat(row.getCell("Quantity Sold").value) || 0;
         const barLength = Math.round((quantitySold / extremes.maxQuantitySold) * 10);
-        const progressBar = `${"█".repeat(barLength)}${" ".repeat(10 - barLength)}`;
+        const progressBar = `${"█".repeat(barLength)}${"▒".repeat(10 - barLength)}`;
         row.getCell("Quantity Sold").value = `${progressBar} ${quantitySold}`;
-        row.getCell("Quantity Sold").font = { bold: true, color: { argb: "5B9BD5" } };
+        row.getCell("Quantity Sold").font = { bold: true, color: { argb: "8A96A0" } };
         row.getCell("Quantity Sold").alignment = { horizontal: "left", vertical: "middle" };
 
         const salesChange = parseFloat(row.getCell("Sales Change (%)").value) || 0;
@@ -155,19 +155,19 @@ const generateExcelFile = async (filters) => {
 
         if (salesChange > 20) {
             emoji = "▲";
-            fillColor = "006100"; // Dark Green
+            fillColor = "D9EAD3"; 
         } else if (salesChange >= 10) {
             emoji = "⇧";
-            fillColor = "C6EFCE"; // Light Green
+            fillColor = "E7F5E1"; 
         } else if (salesChange > -10) {
             emoji = "➔";
-            fillColor = "FFEB9C"; // Yellow
+            fillColor = "FFEB9C"; 
         } else if (salesChange >= -20) {
             emoji = "⇩";
-            fillColor = "FFC7CE"; // Light Red
+            fillColor = "F4CCCC"; 
         } else {
             emoji = "▼";
-            fillColor = "9C0006"; // Dark Red
+            fillColor = "FAD8D6"; 
         }
 
         const salesChangeCell = row.getCell("Sales Change (%)");

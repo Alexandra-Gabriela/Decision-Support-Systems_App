@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const excelRoutes = require('../routes/excelRoutes');
+const path = require("path");
 
 const app = express();
 
@@ -18,6 +19,9 @@ app.use(cors({
     },
     credentials: true // Permite transmiterea de cookie-uri/antete
 }));
+
+
+app.use("/files", express.static(path.join(__dirname, "../public/files")));
 
 // Middleware pentru parsarea JSON-ului
 app.use(express.json());

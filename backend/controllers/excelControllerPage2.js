@@ -1,17 +1,24 @@
-const { generateExcelFilePage2 } = require('../services/excelServicePage2');
+const path = require("path");
+const { generateExcelFilePage2 } = require("../services/excelServicePage2");
 
 const exportExcelPage2 = async (req, res) => {
     try {
-        const { historicalSales, forecastSales, years } = req.body;
+        const { filters } = req.body;
 
-        // Apelăm funcția din service pentru generarea fișierului Excel
-        const filePath = await generateExcelFilePage2(historicalSales, forecastSales, years);
+        if (!filters || !filters.gender || !filters.years || !filters.trendType) {
+            return res.status(400).json({ message: "Date incomplete pentru export." });
+        }
 
-        res.status(200).json({ message: 'File generated successfully', filePath: `/public/${path.basename(filePath)}` });
+        const { gender, years, region, productType, trendType } = filters;
+        const fileName = await generateExcelFilePage2({ gender, years, region, productType, trendType });
+
+        const fileUrl = `${req.protocol}://${req.get("host")}/files/${fileName}`;
+        res.status(200).json({ message: "Fișier generat cu succes.", filePath: fileUrl });
     } catch (error) {
-        console.error('Error exporting Excel:', error);
-        res.status(500).json({ message: 'Failed to generate Excel file' });
+        console.error("Eroare în timpul exportului:", error.message);
+        res.status(500).json({ message: "Eroare la generarea fișierului Excel." });
     }
 };
+
 
 module.exports = { exportExcelPage2 };

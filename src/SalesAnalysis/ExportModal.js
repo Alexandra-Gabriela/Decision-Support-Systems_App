@@ -13,6 +13,7 @@ import {
 } from "@mui/material";
 import { Line } from "react-chartjs-2";
 import regression from "regression"; // Import corect pentru librăria de regresie
+import axios from "axios"; // Import axios pentru cererile HTTP
 
 const CombinedModal = ({ open, handleClose, salesData }) => {
   const [selectedRegion, setSelectedRegion] = useState("");
@@ -21,6 +22,7 @@ const CombinedModal = ({ open, handleClose, salesData }) => {
   const [forecastYears, setForecastYears] = useState(3); // ani de previziune
   const [trendType, setTrendType] = useState("Linear"); // Tipul de trend selectat
   const [chartData, setChartData] = useState(null);
+  const [loading, setLoading] = useState(false); // Stare de încărcare
 
   // Obțineți valorile unice pentru fiecare câmp de filtrare
   const uniqueRegions = [...new Set(salesData.map((item) => item.Region))];
@@ -110,42 +112,28 @@ const CombinedModal = ({ open, handleClose, salesData }) => {
   };
 
   const handleExport = async () => {
-    console.log(chartData);
-    if (!chartData || !chartData.datasets || chartData.datasets.length === 0) {
-      alert("Nu există date de exportat.");
-      return; // Ieși din funcție dacă nu există date
-    }
-  
-    // Structurăm datele de export (vânzări istorice și prognoză)
-    const exportData = {
-      historicalSales: chartData.datasets[0].data, // Vânzările istorice
-      forecastSales: chartData.datasets[1].data, // Vânzările prognozate
-      years: chartData.labels, // Anii
-    };
-  
     try {
-      // Trimitem datele către backend
-      const response = await fetch("http://localhost:5000/api/excel/export-page2", { // Ruta corectă
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(exportData),
-      });
-  
-      if (response.ok) {
-        alert("Datele au fost exportate cu succes!");
-      } else {
-        alert("A apărut o eroare la exportarea datelor.");
-      }
+        const filters = {
+            gender: selectedGender,
+            years: forecastYears,
+            region: selectedRegion,
+            productType: selectedProductType,
+            trendType, // Include tipul de trend selectat
+        };
+
+        const response = await axios.post("http://localhost:5000/api/excel/export-page2", { filters });
+
+        const { filePath } = response.data;
+        window.open(filePath, "_blank");
     } catch (error) {
-      alert("Eroare la conectarea la server: " + error.message);
+        console.error("Eroare la export:", error.response ? error.response.data : error.message);
+        alert("Eroare la exportul fișierului Excel.");
     }
-  };
-  
+};
+
   return (
     <Modal open={open} onClose={handleClose}>
-      <Box
+      <Box 
         sx={{
           position: "absolute",
           top: "50%",
@@ -212,34 +200,34 @@ const CombinedModal = ({ open, handleClose, salesData }) => {
                 onChange={(e) => setSelectedProductType(e.target.value)}
               >
                 <MenuItem value="">Toate</MenuItem>
-                {uniqueProductTypes.map((type) => (
-                  <MenuItem key={type} value={type}>
-                    {type}
+                {uniqueProductTypes.map((productType) => (
+                  <MenuItem key={productType} value={productType}>
+                    {productType}
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
           </Grid>
 
-          {/* Ani de Previziune */}
+          {/* Filtru Ani de Previziune */}
           <Grid item xs={6}>
             <FormControl fullWidth>
               <InputLabel>Ani de Previziune</InputLabel>
               <Select
                 value={forecastYears}
-                onChange={(e) => setForecastYears(parseInt(e.target.value, 10))}
+                onChange={(e) => setForecastYears(e.target.value)}
               >
-                {[1, 3, 5, 10].map((year) => (
-                  <MenuItem key={year} value={year}>
-                    {year} Ani
+                {[3, 5, 10].map((years) => (
+                  <MenuItem key={years} value={years}>
+                    {years}
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
           </Grid>
 
-          {/* Tip Trend */}
-          <Grid item xs={6}>
+          {/* Filtru Tip Trend */}
+          <Grid item xs={12}>
             <FormControl fullWidth>
               <InputLabel>Tip Trend</InputLabel>
               <Select
@@ -254,54 +242,35 @@ const CombinedModal = ({ open, handleClose, salesData }) => {
           </Grid>
         </Grid>
 
-        {/* Buton Generare Grafic */}
-        <Button
-          variant="contained"
-          fullWidth
-          sx={{ mt: 2 }}
-          onClick={generateTrendAndForecast}
-        >
-          Generează Grafic
-        </Button>
-
-        {/* Graficul */}
-        {chartData && (
-          <Box sx={{ height: 300, width: "100%", mt: 2 }}>
+        {/* Graficele */}
+        <Box sx={{ mt: 4 }}>
+          {chartData && (
             <Line
               data={chartData}
               options={{
                 responsive: true,
-                maintainAspectRatio: false,
-                scales: {
-                  x: {
-                    title: { display: true, text: "Ani" },
-                  },
-                  y: {
-                    title: { display: true, text: "Vânzări ($)" },
-                  },
-                },
                 plugins: {
                   legend: {
-                    display: true,
                     position: "top",
-                    labels: {
-                      usePointStyle: true,
-                      pointStyle: "circle",
-                    },
                   },
                 },
               }}
             />
-          </Box>
-        )}
+          )}
+        </Box>
 
-        {/* Butoane Finalizare */}
-        <Box sx={{ display: "flex", justifyContent: "space-between", mt: 2 }}>
-          <Button variant="outlined" onClick={handleClose}>
-            Anulează
+        {/* Butoane */}
+        <Box sx={{ mt: 2, display: "flex", justifyContent: "space-between" }}>
+          <Button variant="contained" onClick={generateTrendAndForecast}>
+            Generați Previziuni
           </Button>
-          <Button variant="contained" onClick={handleExport}>
-            Exportă
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleExport}
+            disabled={loading} // Butonul este dezactivat dacă se află în proces de export
+          >
+            {loading ? "Se generează..." : "Exportă Fișier Excel"}
           </Button>
         </Box>
       </Box>

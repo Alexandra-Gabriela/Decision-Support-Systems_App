@@ -1,44 +1,76 @@
-const ExcelJS = require('exceljs');
-const path = require('path');
-const { exec } = require('child_process');
+const path = require("path");
+const fs = require("fs");
+const { execFile, exec } = require("child_process"); // Import exec pentru a deschide Excel-ul
 
-const generateExcelFilePage2 = async (historicalSales, forecastSales, years) => {
-    const workbook = new ExcelJS.Workbook();
-    const worksheet = workbook.addWorksheet('Sales Forecast');
+const generateExcelFilePage2 = async ({ gender, productType, region, years, trendType }) => {
+    try {
+        const filePath = path.join(__dirname, "../csvjson.json");
+        const rawData = fs.readFileSync(filePath, "utf-8");
+        const jsonData = JSON.parse(rawData);
 
-    // Adăugăm antetul tabelului
-    worksheet.addRow(['Year', 'Historical Sales', 'Forecast Sales']);
-    worksheet.columns = [
-        { key: 'year', width: 15 },
-        { key: 'historical', width: 20 },
-        { key: 'forecast', width: 20 },
-    ];
-
-    // Adăugăm datele
-    years.forEach((year, index) => {
-        worksheet.addRow({
-            year,
-            historical: historicalSales[index] || null,
-            forecast: forecastSales[index] || null,
+        // Filtrarea datelor
+        const filteredData = jsonData.filter((item) => {
+            return (
+                (!gender || item["Customer Gender"] === gender) &&
+                (!productType || item["Product Type"] === productType) &&
+                (!region || item["Region"] === region)
+            );
         });
-    });
 
-    // Adăugăm un exemplu de formulă (ex: R²)
-    worksheet.addRow([]);
-    worksheet.addRow(['Formula Example (R²): =RSQ(B2:B10, C2:C10)']);
-
-    // Salvăm fișierul într-un folder local
-    const filePath = path.join(__dirname, "../ExportedData.xlsx");
-    await workbook.xlsx.writeFile(filePath);
-
-    // Deschidem automat fișierul Excel (pentru testare locală)
-    exec(`start excel "${filePath}"`, (err) => {
-        if (err) {
-            console.error('Error opening Excel file:', err);
+        if (filteredData.length === 0) {
+            throw new Error("Nu există date care să corespundă filtrării.");
         }
-    });
 
-    return filePath;
+        // Calcularea vânzărilor totale anuale
+        const yearlySales = {};
+        filteredData.forEach((data) => {
+            const year = parseInt(data["Year"], 10);
+            if (!yearlySales[year]) yearlySales[year] = 0;
+            yearlySales[year] += data["Total Sale"];
+        });
+
+        const historicalData = Object.keys(yearlySales).map((year) => ({
+            year: parseInt(year, 10),
+            totalSales: yearlySales[year],
+        }));
+
+        // Generarea datelor de previziune
+        const currentYear = new Date().getFullYear();
+        const forecastData = Array.from({ length: years }, (_, i) => ({
+            year: currentYear + i,
+            totalSales: null, // Python va calcula previziunile
+        }));
+
+        const scriptPath = path.join(__dirname, "../scripts/generate_excel.py");
+        const outputFile = path.join(__dirname, "../public/files/ExportedData.xlsx");
+
+        // Rulează scriptul Python cu tipul de trend
+        const pythonArgs = [
+            JSON.stringify(historicalData),
+            JSON.stringify(forecastData),
+            trendType.toLowerCase(),
+            outputFile, // Tipul de trend selectat
+        ];
+
+        await new Promise((resolve, reject) => {
+            execFile("python", [scriptPath, ...pythonArgs], (error, stdout, stderr) => {
+                if (error) {
+                    console.error("Eroare la executarea scriptului Python:", stderr);
+                    reject(error);
+                } else {
+                    console.log("Rezultatul scriptului Python:", stdout);
+                    resolve();
+                }
+            });
+        });
+
+        return path.basename(outputFile);
+    } catch (error) {
+        console.error("Eroare la generarea fișierului Excel:", error);
+        throw new Error("Eroare la crearea fișierului Excel.");
+    }
+
 };
+
 
 module.exports = { generateExcelFilePage2 };
