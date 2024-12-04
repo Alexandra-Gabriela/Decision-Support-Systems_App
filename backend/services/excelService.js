@@ -67,6 +67,37 @@ const calculateExtremes = (worksheet) => {
     return { maxSalesAmount, minSalesAmount, maxTotalSale, minTotalSale, maxQuantitySold };
 };
 
+const addLegendSheet = (workbook) => {
+    const legendSheet = workbook.addWorksheet("Legend");
+
+    legendSheet.columns = [
+        { header: "Format", key: "Format", width: 30 },
+        { header: "Description", key: "Description", width: 50 },
+    ];
+
+    const legendData = [
+        { Format: "Header Row", Description: "Bold text with blue background." },
+        { Format: "Max Total Sale", Description: "Green background and dark green text." },
+        { Format: "Min Total Sale", Description: "Red background and dark red text." },
+        { Format: "Max Sales Amount", Description: "Light green background in 'Sales Amount' column." },
+        { Format: "Min Sales Amount", Description: "Light red background in 'Sales Amount' column." },
+        { Format: "Quantity Sold", Description: "Progress bar with quantity appended." },
+        { Format: "Sales Change (%) ▲", Description: "Sales increased by more than 20% (dark green background)." },
+        { Format: "Sales Change (%) ⇧", Description: "Sales increased between 10% and 20% (light green background)." },
+        { Format: "Sales Change (%) ➔", Description: "Sales change within ±10% (yellow background)." },
+        { Format: "Sales Change (%) ⇩", Description: "Sales decreased between 10% and 20% (light red background)." },
+        { Format: "Sales Change (%) ▼", Description: "Sales decreased by more than 20% (dark red background)." },
+    ];
+
+    legendSheet.addRows(legendData);
+
+    legendSheet.getRow(1).eachCell((cell) => {
+        cell.font = { bold: true, color: { argb: "FFFFFF" } };
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "5B9BD5" } }; // Blue
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+    });
+};
+
 const generateExcelFile = async (filters) => {
     const data = getFilteredData(filters);
 
@@ -137,7 +168,7 @@ const generateExcelFile = async (filters) => {
                     type: "pattern",
                     pattern: "solid",
                     fgColor: { argb: "F4CCCC" },
-                }; 
+                };
                 row.getCell("Sales Amount").font = { color: { argb: "9C0006" } };
             }
         }
@@ -188,6 +219,8 @@ const generateExcelFile = async (filters) => {
         cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "5B9BD5" } }; // Blue
         cell.alignment = { horizontal: "center", vertical: "middle" };
     });
+
+    addLegendSheet(workbook);
 
     const filePath = path.join(__dirname, "../ExportedData.xlsx");
     await workbook.xlsx.writeFile(filePath);

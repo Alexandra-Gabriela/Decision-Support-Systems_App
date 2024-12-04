@@ -58,6 +58,7 @@ const Cartograma = () => {
   });
   const [salesData, setSalesData] = useState([]);
   const [jsonData, setJsonData] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -65,6 +66,10 @@ const Cartograma = () => {
       try {
         const data = await fetch('/csvjson.json').then((res) => res.json());
         setJsonData(data);
+
+        // Extrage toate categoriile unice
+        const uniqueCategories = [...new Set(data.map((entry) => entry['Product Type']))];
+        setCategories(uniqueCategories);
       } catch (error) {
         console.error('Error loading JSON data:', error);
       }
@@ -92,7 +97,7 @@ const Cartograma = () => {
       .reduce((acc, entry) => {
         const subtype = entry['Product Subtype'];
         acc[subtype] = (acc[subtype] || 0) + entry['Total Sale'];
-        acc[subtype] = parseFloat(acc[subtype]).toFixed(2); 
+        acc[subtype] = parseFloat(acc[subtype]).toFixed(2);
         return acc;
       }, {});
   };
@@ -151,8 +156,7 @@ const Cartograma = () => {
 
   return (
     <div>
-      <h2>Cartodiagram sales for Romania
-      </h2>
+      <h2>Cartodiagram sales for Romania</h2>
       <div style={{ marginBottom: '20px', position: 'relative', zIndex: 1000 }}>
         <label>
           Select Month and Year:
@@ -171,10 +175,11 @@ const Cartograma = () => {
             style={{ marginLeft: '10px', marginRight: '20px' }}
           >
             <option value="">All</option>
-            <option value="Sun Protection">Sun Protection</option>
-            <option value="Makeup">Makeup</option>
-            <option value="Fragrance">Fragrance</option>
-            <option value="Nails">Nails</option>
+            {categories.map((category) => (
+              <option key={category} value={category}>
+                {category}
+              </option>
+            ))}
           </select>
         </label>
         <label>
