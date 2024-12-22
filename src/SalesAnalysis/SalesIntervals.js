@@ -209,14 +209,16 @@ const SalesHistogram = () => {
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
 
-    const handleExportExcel = async (filters) => { // Acceptă filters ca parametru
-        try {const response = await fetch('http://localhost:5000/api/excel/generate-excel', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify(filters),
-        });
+    const handleExportExcel = async (filters) => {
+        console.log("Filters sent to backend:", filters); // Adaugă acest log
+        try {
+            const response = await fetch('http://localhost:5000/api/excel/generate-excel', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(filters),
+            });
             if (!response.ok) {
                 throw new Error('Failed to export Excel file');
             }

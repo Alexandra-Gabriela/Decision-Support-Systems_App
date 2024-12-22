@@ -40,6 +40,25 @@ const getFilteredData = (filters) => {
             sale.Region.toLowerCase() === filters.region.toLowerCase()
         );
     }
+    if (filters.errorMargins) {
+        const margins = filters.errorMargins; // Lista marjelor primită din frontend
+        filteredData = filteredData.filter((sale) => {
+            const salesChange = parseFloat(sale["Sales Change (%)"]) || 0;
+    
+            // Verificăm dacă valoarea `Sales Change (%)` se încadrează în oricare dintre marje
+            for (let i = 0; i < margins.length; i++) {
+                const margin = margins[i];
+                const nextMargin = margins[i + 1] || { max: -Infinity }; // Ultima marjă devine limita inferioară
+    
+                if (salesChange <= margin.max && salesChange > nextMargin.max) {
+                    return true; // Valoarea este validă pentru această marjă
+                }
+            }
+            return false; // Nu s-a potrivit cu niciuna din marje
+        });
+    }
+    
+    
 
     return filteredData;
 };
@@ -184,26 +203,40 @@ const generateExcelFile = async (filters) => {
         let emoji = "";
         let fillColor = "";
 
-        if (salesChange > 20) {
-            emoji = "▲";
-            fillColor = "D9EAD3"; 
-        } else if (salesChange >= 10) {
-            emoji = "⇧";
-            fillColor = "E7F5E1"; 
-        } else if (salesChange > -10) {
-            emoji = "➔";
-            fillColor = "FFEB9C"; 
-        } else if (salesChange >= -20) {
-            emoji = "⇩";
-            fillColor = "F4CCCC"; 
-        } else {
-            emoji = "▼";
-            fillColor = "FAD8D6"; 
-        }
+        if (margin) {
+            let emoji = "";
+            let fillColor = "";
+    
+            switch (margin.id) {
+                case "highIncrease":
+                    emoji = "▲";
+                    fillColor = "00B050"; // Dark green
+                    break;
+                case "moderateIncrease":
+                    emoji = "⇧";
+                    fillColor = "92D050"; // Light green
+                    break;
+                case "neutral":
+                    emoji = "➔";
+                    fillColor = "FFFF00"; // Yellow
+                    break;
+                case "moderateDecrease":
+                    emoji = "⇩";
+                    fillColor = "FF9A99"; // Light red
+                    break;
+                case "highDecrease":
+                    emoji = "▼";
+                    fillColor = "FF0000"; // Dark red
+                    break;
+                default:
+                    break;
+            }
 
-        const salesChangeCell = row.getCell("Sales Change (%)");
-        salesChangeCell.value = `${emoji} ${salesChange.toFixed(2)}%`;
-        salesChangeCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fillColor } };
+            const salesChangeCell = row.getCell("Sales Change (%)");
+            salesChangeCell.value = `${emoji} ${salesChange.toFixed(2)}%`;
+            salesChangeCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: fillColor } };
+            salesChangeCell.alignment = { horizontal: "center", vertical: "middle" };
+        }
     });
 
     // Add total row

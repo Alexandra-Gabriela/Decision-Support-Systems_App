@@ -67,6 +67,8 @@ const Cartograma = () => {
         const data = await fetch('/csvjson.json').then((res) => res.json());
         setJsonData(data);
 
+        console.log('Loaded JSON data:', data); // Log pentru verificarea datelor încărcate
+
         // Extrage toate categoriile unice
         const uniqueCategories = [...new Set(data.map((entry) => entry['Product Type']))];
         setCategories(uniqueCategories);
@@ -78,7 +80,10 @@ const Cartograma = () => {
   }, []);
 
   const filterData = (filters, data) => {
-    return data.filter((entry) => {
+    console.log('Filters applied:', filters); // Log pentru filtrele aplicate
+    console.log('Data before filtering:', data); // Log pentru datele înainte de filtrare
+
+    const filtered = data.filter((entry) => {
       const entryDate = new Date(entry.Date);
       const entryMonth = `${entryDate.getFullYear()}-${(entryDate.getMonth() + 1)
         .toString()
@@ -89,14 +94,17 @@ const Cartograma = () => {
         (!filters.gender || entry['Customer Gender'] === filters.gender)
       );
     });
+
+    console.log('Data after filtering:', filtered); // Log pentru datele după filtrare
+    return filtered;
   };
 
   const calculateRegionData = (filteredData, region) => {
     return filteredData
-      .filter((entry) => entry.Region === region)
+      .filter((entry) => entry.Region === region && entry['Total Sale'] && entry['Product Subtype'])
       .reduce((acc, entry) => {
         const subtype = entry['Product Subtype'];
-        acc[subtype] = (acc[subtype] || 0) + entry['Total Sale'];
+        acc[subtype] = (acc[subtype] || 0) + parseFloat(entry['Total Sale']);
         acc[subtype] = parseFloat(acc[subtype]).toFixed(2);
         return acc;
       }, {});
@@ -110,6 +118,10 @@ const Cartograma = () => {
       { id: 'Muntenia', name: 'Muntenia', coords: [44.4268, 26.1025] },
       { id: 'Dobrogea', name: 'Dobrogea', coords: [44.035, 28.66] },
       { id: 'Ardeal', name: 'Ardeal', coords: [46.7704, 23.5897] },
+      { id: 'Transylvania', name: 'Transylvania', coords: [46.0748, 23.6512] },
+      { id: 'Oltenia', name: 'Oltenia', coords: [44.314, 23.8] },
+      { id: 'Bucovina', name: 'Bucovina', coords: [47.633, 25.5] },
+      { id: 'Maramures', name: 'Maramures', coords: [47.6582, 23.5795] },
     ];
 
     const filteredData = filterData(filters, jsonData);
@@ -117,6 +129,8 @@ const Cartograma = () => {
       ...region,
       pieData: calculateRegionData(filteredData, region.name),
     }));
+
+    console.log('Sales Data by Region:', updatedData); // Log pentru datele pe regiuni
 
     setSalesData(updatedData);
     setLoading(false);
@@ -215,17 +229,11 @@ const Cartograma = () => {
           />
           {salesData.map((sale) => (
             <React.Fragment key={sale.id}>
-              <Marker
-                position={sale.coords}
-                icon={new L.Icon({
-                  iconUrl: 'push-pin.png',
-                  iconSize: [32, 32],
-                  iconAnchor: [16, 32],
-                })}
-              />
-              <CustomOverlay position={sale.coords}>
-                {renderChart(sale.pieData, sale.name)}
-              </CustomOverlay>
+              <Marker position={sale.coords}>
+                <CustomOverlay position={sale.coords}>
+                  {renderChart(sale.pieData, sale.name)}
+                </CustomOverlay>
+              </Marker>
             </React.Fragment>
           ))}
         </MapContainer>
